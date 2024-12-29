@@ -51,17 +51,21 @@ namespace config {
 	};//motors
 
 
-	inline auto __gpio_out_false = +[](gpio_num_t IO) {
+	inline auto __gpio_out_false = +[](void* arg) {
+		gpio_num_t IO = *static_cast<gpio_num_t*>(arg);
+
 		esp::gpio_out(IO,false);
 		};
 
 	inline mstd::call_once __motors_Init(
-		[&]() {//先引用捕获
+		[](std::array<motor,16>& motors) {
 			for (size_t i = 0; i < motors.size(); i++) {
 				if (motors[i].forward != GPIO_NUM_NC) {//有定义
-					esp::gpio_set_in(motors[i].stop_forward,__gpio_out_false,motors[i].forward);//注册需要的中断服务
+					esp::gpio_set_in(motors[i].stop_forward,__gpio_out_false,&motors[i].forward);//注册需要的中断服务
 				}
 			}
-		}
+		},motors
 	);
+
+
 }//config
