@@ -25,9 +25,6 @@ namespace bambu {
         inline const string uload = R"({"print":{"command":"ams_change_filament","curr_temp":245,"sequence_id":"1","tar_temp":245,"target":255},"user_id":"1"})";
         //@_@如果说是两个_temp是温度,但是实际还是250,可能是没有细分到个位数,也可能是命令理解有误
 
-        // inline const std::string 捕获到的退料(R"({ "print":{"command":"ams_change_filament", "curr_temp" : 210, "sequence_id" : "20705", "tar_temp" : 210, "target" : 255, "reason" : "success", "result" : "success"} })");//这捕获到的温度和我设置的也不一样啊
-        //然后后面热端目标温度又是250,我设置的是245
-
 
         inline const string click_done = R"({"print":{"command":"ams_control","param":"done","sequence_id":"1"},"user_id":"1"})";
         inline const string chick_resuem = R"(
