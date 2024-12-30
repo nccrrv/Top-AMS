@@ -1,10 +1,10 @@
 ﻿#pragma once
 
-#include "include/tools.h"
+#include "include/tools.hpp"
 #include <string>
 #include <array>
 // #include "driver/gpio.h"
-#include "include/espIO.h"
+#include "include/espIO.hpp"
 
 namespace config {
 

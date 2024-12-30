@@ -26,11 +26,11 @@
 #include <sys/param.h>
 
 
-#include "config.h"
-#include "include/tools.h"
-#include "include/espIO.h"
-#include "include/espWIFI.h"
-#include "include/bambu.h"
+#include "config.hpp"
+#include "include/tools.hpp"
+#include "include/espIO.hpp"
+#include "include/espWIFI.hpp"
+#include "include/bambu.hpp"
 #include "include/ArduinoJson.hpp"
 
 

@@ -3,7 +3,7 @@
 #include "driver/gpio.h"
 #include "freertos/queue.h"
 #include "esp_timer.h"
-#include "tools.h"
+#include "tools.hpp"
 // #include <array>
 #include <vector>
 

@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include "esp_wifi.h"
-#include "tools.h"
+#include "tools.hpp"
 #include <cstring>
 
 namespace esp {
