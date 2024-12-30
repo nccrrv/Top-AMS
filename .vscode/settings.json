@@ -1,9 +1,0 @@
-{
-    "files.associations": {
-        "*.json": "jsonl",
-        "*.h": "cpp",
-        "chrono": "cpp",
-        "string_view": "cpp",
-        "string": "cpp"
-    }
-}
