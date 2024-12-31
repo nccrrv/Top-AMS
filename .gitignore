@@ -1,8 +1,8 @@
 build/
 .vscode/
-config.hpp
-sdkconfig
-sdkconfig.old
+#main/config.hpp
+#sdkconfig
+#sdkconfig.old
 
 # Prerequisites
 *.d
