@@ -26,13 +26,17 @@
 #include <sys/param.h>
 
 
-#include "config.hpp"
 #include "include/tools.hpp"
 #include "include/espIO.hpp"
 #include "include/espWIFI.hpp"
 #include "include/bambu.hpp"
 #include "include/ArduinoJson.hpp"
 
+#if __has_include("config.hpp")
+#include "config.hpp"
+#else
+#include "config_example.hpp"
+#endif
 
 int bed_target_temper_max = 0;
 std::atomic<int> extruder = 1;// 1-16,初始通道默认为1
