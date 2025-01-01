@@ -1,9 +1,12 @@
 # Top-AMS
 
+# **施工中**
+
+
+使用说明(放Readme.md)
+config.h的
+sdkconfg的
+
 代办
-
-安装教程
-vscode和命令行的
-
-sdkconfig还要更改分区表
+    教程
 
