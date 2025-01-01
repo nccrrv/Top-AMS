@@ -60,13 +60,19 @@ namespace esp {
 
 
 
+	inline QueueHandle_t gpio_channle = xQueueCreate(10,sizeof(gpio_num_t));
 
+	//统一将IO脚编号加入队列
+	inline void IRAM_ATTR __gpio_isr_handler(void* arg) {
+		gpio_num_t gpio_num = (gpio_num_t)(uintptr_t)(arg);
+		xQueueSendFromISR(gpio_channle,&gpio_num,NULL);
+	}
 
-
-	template<typename F,typename V>
-	void gpio_set_in(gpio_num_t IO,const F& f,V v) {//未来如果有别的需求可以抽象一下,只改中断触发方式
+	inline void gpio_set_in(gpio_num_t IO) {//未来如果有别的需求可以抽象一下,只改中断触发方式
 		// static_assert(IO != 9, "BOOT");//?上电前不能下拉，ESP32会进入下载模式
 		// static_assert(IO != 11, "11");//GPIO11默认为SPI flash的VDD引脚，需要配置后才能作为GPIO使用
+		if (IO == gpio_num_t::GPIO_NUM_NC) return;
+
 
 		uint64_t pin_mask = 1ull << IO;
 		gpio_config_t io_conf = {
@@ -80,12 +86,15 @@ namespace esp {
 		gpio_set_intr_type(IO,GPIO_INTR_ANYEDGE);
 
 
-		gpio_isr_handler_add(IO,f,(void*)v);
+		gpio_isr_handler_add(IO,__gpio_isr_handler,(void*)IO);
 	}//gpio_set_in
 
 	inline mstd::call_once __gpio_set_init([] {
 		gpio_install_isr_service(0);
 		});
+
+
+
 
 
 
