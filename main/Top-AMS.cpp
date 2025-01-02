@@ -55,36 +55,37 @@ inline constexpr int 进料完成 = 768;
 
 namespace config {
 
-	inline std::jthread gpio_in_thread([](QueueHandle_t& gpio_channle) {
-		esp::gpio_set_in(forward_click);//注册需要的中断服务
-		esp::gpio_set_in(back_click);
+	// inline std::jthread gpio_in_thread([](QueueHandle_t& gpio_channle) {
+		// esp::gpio_set_in(forward_click);//注册需要的中断服务
+		// esp::gpio_set_in(back_click);
 
-		gpio_num_t io_num;
-		while (true) {
-			if (xQueueReceive(gpio_channle,&io_num,portMAX_DELAY)) {
-				if (io_num == forward_click) {
-					fpr("前向微动触发");
-					int now_extruder = extruder;//假定前向微动触发肯定是非换料时间
-					mstd::delay(foward_click_wait_time);
-					esp::gpio_out(config::motors[now_extruder - 1].forward,true);
-					mstd::delay(foward_click_run_time);
-					esp::gpio_out(config::motors[now_extruder - 1].forward,false);
-				}
-				else if (io_num == back_click) {
-					fpr("后向微动触发");
-					int now_extruder = extruder;//后向微动触发可能是换料时间,要在work确保好extruder的改变时机
-					mstd::delay(back_click_wait_time);
-					esp::gpio_out(config::motors[now_extruder - 1].backward,true);
-					mstd::delay(back_click_run_time);
-					esp::gpio_out(config::motors[now_extruder - 1].backward,false);
-				}
-				else {
-					fpr("未知中断,非预期行为");
-				}
-			}
-		}//while
-		}
-	,std::ref(esp::gpio_channle));
+		// gpio_num_t io_num;
+		// while (true) {
+		// 	if (xQueueReceive(gpio_channle,&io_num,portMAX_DELAY)) {
+		// 		if (io_num == forward_click) {
+		// 			fpr("前向微动触发");
+		// 			int now_extruder = extruder;//假定前向微动触发肯定是非换料时间
+		// 			mstd::delay(foward_click_wait_time);
+		// 			esp::gpio_out(config::motors[now_extruder - 1].forward,true);
+		// 			mstd::delay(foward_click_run_time);
+		// 			esp::gpio_out(config::motors[now_extruder - 1].forward,false);
+		// 		}
+		// 		else if (io_num == back_click) {
+		// 			fpr("后向微动触发");
+		// 			int now_extruder = extruder;//后向微动触发可能是换料时间,要在work确保好extruder的改变时机
+		// 			mstd::delay(back_click_wait_time);
+		// 			esp::gpio_out(config::motors[now_extruder - 1].backward,true);
+		// 			mstd::delay(back_click_run_time);
+		// 			esp::gpio_out(config::motors[now_extruder - 1].backward,false);
+		// 		}
+		// 		else {
+		// 			fpr("未知中断,非预期行为");
+		// 		}
+		// 	}
+		// }//while
+// }
+// ,std::ref(esp::gpio_channle));
+
 
 }//config
 
@@ -321,6 +322,37 @@ void work(esp_mqtt_client_handle_t client) {//需要更好名字
 
 extern "C" void app_main(void) {
 
+	std::jthread gpio_in_thread([]() {
+		using namespace config;
+		esp::gpio_set_in(forward_click);//注册需要的中断服务
+		esp::gpio_set_in(back_click);
+
+		gpio_num_t io_num;
+		while (true) {
+			if (xQueueReceive(esp::gpio_channle,&io_num,portMAX_DELAY)) {
+				if (io_num == forward_click) {
+					fpr("前向微动触发");
+					int now_extruder = extruder;//假定前向微动触发肯定是非换料时间
+					mstd::delay(foward_click_wait_time);
+					esp::gpio_out(config::motors[now_extruder - 1].forward,true);
+					mstd::delay(foward_click_run_time);
+					esp::gpio_out(config::motors[now_extruder - 1].forward,false);
+				}
+				else if (io_num == back_click) {
+					fpr("后向微动触发");
+					int now_extruder = extruder;//后向微动触发可能是换料时间,要在work确保好extruder的改变时机
+					mstd::delay(back_click_wait_time);
+					esp::gpio_out(config::motors[now_extruder - 1].backward,true);
+					mstd::delay(back_click_run_time);
+					esp::gpio_out(config::motors[now_extruder - 1].backward,false);
+				}
+				else {
+					fpr("未知中断,非预期行为");
+				}
+			}
+		}//while
+		}
+	);
 
 	/*esp_err_t ret = */nvs_flash_init();//初始化nvs存储空间
 	ESP_ERROR_CHECK(esp_netif_init());
