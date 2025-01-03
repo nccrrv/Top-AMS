@@ -60,7 +60,7 @@ namespace esp {
 
 
 
-	inline QueueHandle_t gpio_channle = xQueueCreate(10,sizeof(gpio_num_t));
+	inline QueueHandle_t gpio_channle = xQueueCreate(1,sizeof(gpio_num_t));
 
 	//统一将IO脚编号加入队列
 	inline void IRAM_ATTR __gpio_isr_handler(void* arg) {
