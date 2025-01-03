@@ -80,7 +80,8 @@ namespace esp {
 			GPIO_MODE_INPUT,
 			GPIO_PULLUP_ENABLE,//开上拉
 			GPIO_PULLDOWN_DISABLE,
-			GPIO_INTR_NEGEDGE//开中断
+			// GPIO_INTR_NEGEDGE//下降沿触发
+			GPIO_INTR_LOW_LEVEL//低电平触发
 		};
 		gpio_config(&io_conf);
 		gpio_set_intr_type(IO,GPIO_INTR_ANYEDGE);
