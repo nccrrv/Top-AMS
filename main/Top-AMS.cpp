@@ -297,12 +297,13 @@ extern "C" void app_main(void) {
 		auto forward_click_now = std::chrono::steady_clock::now();
 		auto back_click_now = std::chrono::steady_clock::now();
 
-		gpio_num_t io_num;
 		while (true) {
-			if (xQueueReceive(esp::gpio_channle,&io_num,portMAX_DELAY)) {
+			esp::gpin gpin_v{ GPIO_NUM_NC,std::chrono::steady_clock::now() };
+			if (xQueueReceive(esp::gpio_channle,&gpin_v,portMAX_DELAY)) {
+				const gpio_num_t& io_num = std::get<0>(gpin_v);
+				const auto& now = std::get<1>(gpin_v);
 				if (io_num == forward_click) {
 
-					auto now = std::chrono::steady_clock::now();
 					if (now - forward_click_now < 200ms)//防抖
 						continue;
 					forward_click_now = now;
@@ -316,7 +317,6 @@ extern "C" void app_main(void) {
 				}
 				else if (io_num == back_click) {
 
-					auto now = std::chrono::steady_clock::now();
 					if (now - back_click_now < 200ms)//防抖
 						continue;
 					back_click_now = now;
