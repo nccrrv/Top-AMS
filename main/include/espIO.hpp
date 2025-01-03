@@ -60,15 +60,15 @@ namespace esp {
 		gpio_set_level(IO,value);
 	}//gpio_out_OD
 
-	using gpin = std::tupe<gpio_num_t,std::chrono::steady_clock::time_point>;
+	using gpin_t = std::tuple<gpio_num_t,std::chrono::steady_clock::time_point>;//可能叫button更好
 
-	inline QueueHandle_t gpio_channle = xQueueCreate(1,sizeof(gpin));
+	inline QueueHandle_t gpio_channle = xQueueCreate(1,sizeof(gpin_t));//中断队列
 
 	//统一将IO脚编号加入队列
 	inline void IRAM_ATTR __gpio_isr_handler(void* arg) {
 		gpio_num_t gpio_num = (gpio_num_t)(uintptr_t)(arg);
-		// gpin in = { gpio_num,std::chrono::steady_clock::now() };
-		// xQueueSendFromISR(gpio_channle,&gpin,NULL);
+		gpin_t in{ gpio_num,std::chrono::steady_clock::now() };
+		xQueueSendFromISR(gpio_channle,&in,NULL);
 	}
 
 	inline void gpio_set_in(gpio_num_t IO) {//未来如果有别的需求可以抽象一下,只改中断触发方式

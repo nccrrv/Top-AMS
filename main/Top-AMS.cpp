@@ -298,7 +298,7 @@ extern "C" void app_main(void) {
 		auto back_click_now = std::chrono::steady_clock::now();
 
 		while (true) {
-			esp::gpin gpin_v{ GPIO_NUM_NC,std::chrono::steady_clock::now() };
+			esp::gpin_t gpin_v{ GPIO_NUM_NC,std::chrono::steady_clock::now() };
 			if (xQueueReceive(esp::gpio_channle,&gpin_v,portMAX_DELAY)) {
 				const gpio_num_t& io_num = std::get<0>(gpin_v);
 				const auto& now = std::get<1>(gpin_v);
