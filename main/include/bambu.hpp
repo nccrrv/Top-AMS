@@ -6,9 +6,11 @@ namespace bambu {
 
     namespace msg {
 
+        //运行Gcode
         inline string runGcode(const string& code) {
-            return string(R"(
-{ "print":{"command":"gcode_line","param" : ")" + code + R"(", "sequence_id" : "0"} })");
+            return string(
+                R"({ "print":{"command":"gcode_line","param" : ")" + code + R"(\n", "sequence_id" : "0"} })"
+            );//Gcode结尾一定要\n
         }
 
 
@@ -27,22 +29,25 @@ namespace bambu {
 
 
         inline const string click_done = R"({"print":{"command":"ams_control","param":"done","sequence_id":"1"},"user_id":"1"})";
-        inline const string chick_resuem = R"(
-		{ "print":{"command":"ams_control", "param" : "resume", "sequence_id" : "20030", "reason" : "success", "result" : "success"} }
-)";//推测是进料重试按钮
+        inline const string chick_resuem =
+            R"({ "print":{"command":"ams_control", "param" : "resume", "sequence_id" : "20030"} })";//推测是进料重试按钮
 
         inline const string error_clean = R"({"print":{"command": "clean_print_error","sequence_id":"1"},"user_id":"1"})";
 
         inline const string get_status = R"({"pushing": {"sequence_id": "0", "command": "pushall"}})";
 
 
-        inline const string led_on = R"({
-			"system": {
-				"command": "ledctrl",
-				"led_node": "chamber_light",
-				"led_mode": "on"
-			}
-		})";
+        inline const string led_on =
+            R"({"system": {"command": "ledctrl","led_node": "chamber_light","led_mode": "on"}})";
     }//msg
+
+
+/*
+已知A1/A1mini 1.04固件下
+使用Mqtt发送热床调节M140,热端调节M104均无效
+旧版本固件或拓竹自家软件发送有效
+因拓竹网络层闭源,测试需要抓包,较为繁琐
+现阶段调温都用M190,M109
+*/
 
 }//bambu
