@@ -28,7 +28,7 @@ namespace esp {
 	},gpio_state };
 
 
-
+	//普通输出
 	inline void gpio_out(gpio_num_t IO,bool value) {
 
 		if (gpio_state[IO].mode != GPIO_MODE_OUTPUT) {
@@ -45,6 +45,7 @@ namespace esp {
 		gpio_set_level(IO,value);
 	}//gpio_out
 
+	//开漏输出
 	inline void gpio_out_OD(gpio_num_t IO,bool value) {
 		if (gpio_state[IO].mode != GPIO_MODE_OUTPUT_OD) {
 			gpio_config_t io_conf = {
@@ -60,6 +61,8 @@ namespace esp {
 		gpio_set_level(IO,value);
 	}//gpio_out_OD
 
+
+
 	using gpin_t = std::tuple<gpio_num_t,std::chrono::steady_clock::time_point>;//可能叫button更好
 
 	inline QueueHandle_t gpio_channle = xQueueCreate(1,sizeof(gpin_t));//中断队列
@@ -67,7 +70,7 @@ namespace esp {
 	//统一将IO脚编号加入队列
 	inline void IRAM_ATTR __gpio_isr_handler(void* arg) {
 		gpio_num_t gpio_num = (gpio_num_t)(uintptr_t)(arg);
-		gpin_t in{ gpio_num,std::chrono::steady_clock::now() };
+		gpin_t in{ gpio_num,std::chrono::steady_clock::now() };//@_@可能不需要
 		xQueueSendFromISR(gpio_channle,&in,NULL);
 	}
 
@@ -84,7 +87,8 @@ namespace esp {
 			GPIO_PULLUP_ENABLE,//开上拉
 			GPIO_PULLDOWN_DISABLE,
 			// GPIO_INTR_NEGEDGE//下降沿触发
-			GPIO_INTR_LOW_LEVEL//低电平触发
+			// GPIO_INTR_LOW_LEVEL//低电平触发
+			GPIO_INTR_ANYEDGE//上下边沿触发
 		};
 		gpio_config(&io_conf);
 		gpio_set_intr_type(IO,GPIO_INTR_ANYEDGE);
