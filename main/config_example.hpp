@@ -38,8 +38,8 @@ namespace config {
 
 	inline const string device_serial = "XXXXXXXXXXXXXXX";
 
-	inline const auto load_time = 15s;//进料运转时间
-	inline const auto uload_time = 15s;//退料运转时间
+	inline const auto load_time = 5s;//进料运转时间
+	inline const auto uload_time = 5s;//退料运转时间
 
 	inline const auto forward_click = GPIO_NUM_NC;//进料微动
 	inline const auto back_click = GPIO_NUM_NC;//退料微动
@@ -56,6 +56,9 @@ namespace config {
 		,motor{GPIO_NUM_NC,GPIO_NUM_NC}//通道3
 		,motor{GPIO_NUM_NC,GPIO_NUM_NC}//通道4
 	};//motors
+	//小白用户自定义电机使用时GPIO
+	//请仔细查询你开发板的针脚定义
+	//像合众esp32C3,应该避开usb使用的18,19,LED灯的12,13
 
 
 	//**********************用户配置区结束******************************
