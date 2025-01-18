@@ -43,6 +43,7 @@ namespace esp {
 		}
 
 		gpio_set_level(IO,value);
+		// fpr(IO,' ',value);
 	}//gpio_out
 
 	//开漏输出
