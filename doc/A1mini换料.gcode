@@ -3,7 +3,7 @@
 {if toolchange_count > 1}
 G17
 G2 Z{max_layer_z + 0.4} I0.86 J0.86 P1 F10000 ;回抽抬升
-;endif;放在结尾,首次就不换色
+;endif;放在结尾,目前设定首次就不换色
 
 G1 Z{max_layer_z + 3.0}
 ;Z抬升
