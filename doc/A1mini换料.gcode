@@ -10,7 +10,7 @@ G1 Z{max_layer_z + 3.0}
 
 
 {if long_retractions_when_cut[previous_extruder]}
-G1 E-{retraction_distances_when_cut[previous_extruder]} F1200;不太理解这个1200的取值
+G1 E-{retraction_distances_when_cut[previous_extruder]} F1200;经测试,加速度也会影响实际抽回料线长度
 {endif}
 M400
 ;长回抽
