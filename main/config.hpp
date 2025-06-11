@@ -37,7 +37,16 @@ namespace config {
     inline gpio_num_t LED_R = GPIO_NUM_12;
     inline gpio_num_t LED_L = GPIO_NUM_13;//暂未使用
 
-    inline std::array<motor, 16> motors{
+
+inline std::array<motor,16> motors{//电机要使用的GPIO
+		 motor{GPIO_NUM_1,GPIO_NUM_0}//通道1,前向GPIO,后向GPIO
+		,motor{GPIO_NUM_19,GPIO_NUM_18}//通道2
+		,motor{GPIO_NUM_3,GPIO_NUM_2}//通道3
+		,motor{GPIO_NUM_6,GPIO_NUM_10}//通道4 
+        ,motor{GPIO_NUM_12,GPIO_NUM_7}
+		,motor{GPIO_NUM_8,GPIO_NUM_5}
+
+   /* inline std::array<motor, 16> motors{
         // 电机要使用的GPIO
         motor{GPIO_NUM_2, GPIO_NUM_3},// 通道1,前向GPIO,后向GPIO
         motor{GPIO_NUM_10, GPIO_NUM_6},// 通道2
@@ -47,6 +56,8 @@ namespace config {
         motor{GPIO_NUM_20, GPIO_NUM_21},// 通道6
         motor{GPIO_NUM_12, GPIO_NUM_13},// 通道7,GPIO12,13为灯,避免冲突需要将灯定义改为NC
         motor{GPIO_NUM_18, GPIO_NUM_19},// 通道8,GPIO18,19和USB冲突,需要带串口芯片或者无协议供电
+*/
+
     };// motors
     // 小白用户自定义电机使用GPIO时
     // 请仔细查询你开发板的针脚定义

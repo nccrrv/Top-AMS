@@ -20,7 +20,12 @@
 
 
 using std::string;
+//新添加的变量
 
+TaskHandle_t Task1_handle;//微动任务
+
+
+//分割
 
 int bed_target_temper_max = 0;
 mesp::wsValue<std::string> ws_extruder("extruder", "1");//@_@先不存盘,也不给前端修改
@@ -30,7 +35,7 @@ int sequence_id = -1;
 std::atomic<int> ams_status = -1;
 std::atomic<bool> pause_lock{false};// 暂停锁
 
-std::atomic<int> hw_switch{0};//小绿点, 其实是布尔
+//std::atomic<int> hw_switch{0};//小绿点, 其实是布尔
 
 inline constexpr int 正常 = 0;
 inline constexpr int 退料完成需要退线 = 260;
@@ -47,6 +52,28 @@ AsyncWebSocket& ws = mesp::ws_server;//先直接用全局的ws_server
 inline mstd::channel_lock<std::function<void()>> async_channel;//异步任务通道
 
 inline string last_ws_log = "日志初始化";//可能会有多个webfpr,非线程安全注意,现在单核先不管
+
+void Task1(void* param){
+	esp::gpio_set_in(GPIO_NUM_4);
+
+    while(true) {
+		int level = gpio_get_level(GPIO_NUM_4);//设定4号口为缓冲驱动
+        
+
+		if (level == 0){
+			int now_extruder = extruder;
+			 webfpr("微动触发");
+			esp::gpio_out(config::motors[now_extruder - 1].forward,true);
+		    vTaskDelay(1000/portTICK_PERIOD_MS);//微动进料的时间可以自己改
+		    esp::gpio_out(config::motors[now_extruder - 1].forward,false);
+		
+
+		}
+	
+			
+		vTaskDelay(20/portTICK_PERIOD_MS);//延时1000ms=1s,使系统执行其他任务删了就寄了
+	}}//微动缓冲程序
+
 
 //@brief WebSocket消息打印
 inline void webfpr(AsyncWebSocket& ws, const string& str) {
@@ -228,7 +255,7 @@ void callback_fun(esp_mqtt_client_handle_t client, const std::string& json) {// 
     bed_target_temper = doc["print"]["bed_target_temper"] | bed_target_temper;
     // nozzle_target_temper = doc["print"]["nozzle_target_temper"] | nozzle_target_temper;
     std::string gcode_state = doc["print"]["gcode_state"] | "unkonw";
-    hw_switch.store(doc["print"]["hw_switch_state"] | hw_switch.load());
+    //hw_switch.store(doc["print"]["hw_switch_state"] | hw_switch.load());
 
     // fpr("nozzle_target_temper:",nozzle_target_temper);
 
@@ -294,8 +321,9 @@ extern "C" void app_main() {
     //     esp::gpio_out(x.backward, false);
     // }//初始化电机GPIO
 
+   xTaskCreate(Task1,"Task1",2048,NULL,1,&Task1_handle);//微动任务
 
-
+    /*
     //微动任务
     std::thread task([]() {
         pinMode(config::forward_click, INPUT_PULLUP);
@@ -319,7 +347,7 @@ extern "C" void app_main() {
     //@_@直接一个thread大概要4kb,像这种轻量的可以用rtos的优化一下
 
 
-
+    */
 
     {// wifi连接部分
         mesp::ConfigStore wificonfig("wificonfig");
