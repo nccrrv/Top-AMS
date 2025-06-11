@@ -152,7 +152,7 @@ void change_filament(esp_mqtt_client_handle_t client, int new_extruder) {
     
     fpr("开始换料");
     // esp::gpio_out(config::LED_R, false);
-    if (config::load_time.get_value() <= 6000)
+    if (config::load_time.get_value() <= 60000)
     {
         fpr("n20电机逻辑");
 
@@ -172,6 +172,8 @@ void change_filament(esp_mqtt_client_handle_t client, int new_extruder) {
     motor_run(old_extruder, false);// 退线
 
     mstd::atomic_wait_un(ams_status, 退料完成);// 应该需要这个wait,打印机或者网络偶尔会卡
+    extruder = new_extruder;//换料完成
+    ws_extruder = std::to_string(new_extruder);// 更新前端显示的耗材编号
 
     publish(client, bambu::msg::runGcode("M109 S250\nG1 E150 F500\n"));//旋转热端齿轮辅助进料
     mstd::delay(5s);//先5s,时间可能取决于热端到250的速度,一个想法是把拉高热端提前能省点时间,但是比较难控制
@@ -201,13 +203,75 @@ void change_filament(esp_mqtt_client_handle_t client, int new_extruder) {
     // esp::gpio_out(config::motors[old_extruder - 1].forward, false);
     //前面辅助进料的话这里就不用了
 
-    extruder = new_extruder;//换料完成
-    ws_extruder = std::to_string(new_extruder);// 更新前端显示的耗材编号
+  
 
     pause_lock = false;
-    fpr("换料结束");}
+    fpr("换料结束");
+    }
+
     else{
         fpr("tt电机逻辑");
+        int old_extruder = extruder;
+        fpr("退料中");
+        ws_extruder = std::to_string(old_extruder) + string(" → ") + std::to_string(new_extruder);
+		vTaskSuspend(Task1_handle);//关闭前进微动防止意外
+        esp::gpio_out(config::motors[old_extruder - 1].backward,true);
+        publish(client,bambu::msg::runGcode(std::string("M190 S") + std::to_string(bed_target_temper_max)+std::string("\nM211 S \nM211 X1 Y1 Z1\nG91 \nG1 Z-5.0 F900\nM211 R\nG1 E-20 F900\nM109 S250\n")));//恢复原来的热床温
+        vTaskDelay(1000 / portTICK_PERIOD_MS); // 延迟1秒
+		publish(client,bambu::msg::uload);
+        vTaskDelay(1000 / portTICK_PERIOD_MS); // 延迟1秒
+		esp::gpio_out(config::motors[old_extruder - 1].backward,false);		
+		mstd::atomic_wait_un(ams_status,退料完成需要退线);                  
+	
+        motor_run(old_extruder, false);// 退线
+		mstd::atomic_wait_un(ams_status,退料完成);//应该需要这个wait,打印机或者网络偶尔会卡
+        extruder = new_extruder;//换料完成
+        ws_extruder = std::to_string(new_extruder);// 更新前端显示的耗材编号
+        vTaskResume (Task1_handle);//恢复微动
+		old_extruder = new_extruder;//切换新的通道
+        publish(client,bambu::msg::runGcode(std::string("M109 S230")));
+        
+        fpr("进料中");
+        esp::gpio_out(config::motors[old_extruder - 1].forward,true);
+
+         for (size_t i = 0; i < 100; i++)
+                {
+                       if (hw_switch == 1) {
+                               break;
+                                          }
+                               
+		           vTaskDelay(1000/portTICK_PERIOD_MS);//微动进料的时间可以自己改
+		         
+                }
+
+            esp::gpio_out(config::motors[old_extruder - 1].forward,false);
+
+       
+        if(hw_switch == 1)
+        {
+
+        
+        webfpr("换料完成");
+        publish(client,bambu::msg::print_resume);//继续打印
+		esp::gpio_out(config::motors[old_extruder - 1].forward,true); 
+		mstd::delay(10s);
+		
+		esp::gpio_out(config::motors[old_extruder - 1].forward,false);
+  
+
+        pause_lock = false;
+        fpr("换料结束");
+     
+        }
+        else {
+            fpr("卡料手动进");
+            pause_lock = false;
+     
+        }
+	
+	//while
+
+
     }
 }// work
 /*
@@ -226,7 +290,7 @@ fpr("开始上料");
             vTaskDelay(3000/portTICK_PERIOD_MS);
             if (hw_switch==0)//没有料所以直接进料
             {
-
+                
                 extruder=new_extruder;//修改为当前通道
                 esp::gpio_out(config::motors[new_extruder - 1].forward,true);
                 publish(__client,bambu::msg::load);
@@ -242,27 +306,48 @@ fpr("开始上料");
                 }
                if(hw_switch == 1)
             { 
-            esp::gpio_out(config::motors[new_extruder - 1].forward,false);  
-            
-		     mstd::atomic_wait_un(ams_status,262);
+            esp::gpio_out(config::motors[new_extruder - 1].forward,false); 
 
-		
-             motor_run(new_extruder, true,3s);// 进线
-		     publish(__client,bambu::msg::click_done);
-
-		     
-             motor_run(new_extruder, true,3s);// 进线
-		     mstd::atomic_wait_un(ams_status,263);
-		     publish(__client,bambu::msg::click_done);
-
-              
-             motor_run(new_extruder, true,3s);// 进线
-
-		     mstd::atomic_wait_un(ams_status,进料完成);
+            int A=0;
+            for (size_t  i = 0; i < 100; i++)
+            {
+                
+               if (ams_status==262)
+               {
+                    if (A==0)
+                    {                        
+               motor_run(new_extruder, true,3s);// 进线              
+                       A=1;
+                    }
+                    
+                    vTaskDelay(2000/portTICK_PERIOD_MS);//微动进料的时间可以自己改
+                    publish(__client,bambu::msg::click_done);
+                    
              
+               }
+               if (ams_status==263)
+               {
+                 if (A==1)
+                    {                        
+               motor_run(new_extruder, true,3s);// 进线              
+                       A=2;
+                    }
+                     vTaskDelay(2000/portTICK_PERIOD_MS);//微动进料的时间可以自己改
+                        
+		       publish(__client,bambu::msg::click_done);
+               }
+               if (ams_status==进料完成)
+               {
+               break;
+               }
+                vTaskDelay(2000/portTICK_PERIOD_MS);//微动进料的时间可以自己改
+               
+                             
+            }
+            
 
-            vTaskDelay(1000/portTICK_PERIOD_MS);//微动进料的时间可以自己改
-            publish(__client,bambu::msg::runGcode(std::string("M109 S170")));
+
+            publish(__client,bambu::msg::runGcode(std::string("M109 S200")));
              webfpr("换料成功");
                 ws_extruder = std::to_string(new_extruder);// 更新前端显示的耗材编号
                
@@ -271,6 +356,7 @@ fpr("开始上料");
                 webfpr("卡料");
                 esp::gpio_out(config::motors[new_extruder - 1].forward,false);
                 ws_extruder = std::to_string(new_extruder);// 更新前端显示的耗材编号
+                 publish(__client,bambu::msg::runGcode(std::string("M109 S200")));
 
             }
             }
@@ -289,7 +375,7 @@ fpr("开始上料");
 		webfpr("发送了退料命令,等待退料完成");
         esp::gpio_out(config::motors[old_extruder - 1].backward,true);
 		mstd::delay(4s);
-		esp::gpio_out(config::motors[old_extruder - 1].backward,false);	
+		esp::gpio_out(config::motors[old_extruder - 1].backward,false);		
 	
 		mstd::atomic_wait_un(ams_status,退料完成需要退线);
 		webfpr("退料完成,需要退线,等待退线完");
@@ -312,34 +398,54 @@ fpr("开始上料");
                if(hw_switch == 1)
             { 
             esp::gpio_out(config::motors[new_extruder - 1].forward,false);  
+
             
-		     mstd::atomic_wait_un(ams_status,262);
-
-		
-             motor_run(new_extruder, true,3s);// 进线
-		     publish(__client,bambu::msg::click_done);
-
-		     
-             motor_run(new_extruder, true,3s);// 进线
-		     mstd::atomic_wait_un(ams_status,263);
-		     publish(__client,bambu::msg::click_done);
-
-              
-             motor_run(new_extruder, true,3s);// 进线
-
-		     mstd::atomic_wait_un(ams_status,进料完成);
+		      int A=0;
+            for (size_t  i = 0; i < 100; i++)
+            {
+                
+               if (ams_status==262)
+               {
+                    if (A==0)
+                    {                        
+               motor_run(new_extruder, true,3s);// 进线              
+                       A=1;
+                    }
+                    
+                    vTaskDelay(2000/portTICK_PERIOD_MS);//微动进料的时间可以自己改
+                    publish(__client,bambu::msg::click_done);
+                    
              
-
-            vTaskDelay(1000/portTICK_PERIOD_MS);//微动进料的时间可以自己改
-            publish(__client,bambu::msg::runGcode(std::string("M109 S170")));
+               }
+               if (ams_status==263)
+               {
+                 if (A==1)
+                    {                        
+               motor_run(new_extruder, true,3s);// 进线              
+                       A=2;
+                    }
+                     vTaskDelay(2000/portTICK_PERIOD_MS);//微动进料的时间可以自己改
+                        
+		       publish(__client,bambu::msg::click_done);
+               }
+               if (ams_status==进料完成)
+               {
+               break;
+               }
+                vTaskDelay(2000/portTICK_PERIOD_MS);//微动进料的时间可以自己改
+               
+                             
+            }
+            publish(__client,bambu::msg::runGcode(std::string("M109 S200")));
              webfpr("换料成功");
-                ws_extruder = std::to_string(new_extruder);// 更新前端显示的耗材编号
+            ws_extruder = std::to_string(new_extruder);// 更新前端显示的耗材编号
 
             }
                 else 
                 {
                     webfpr("卡料");
                     ws_extruder = std::to_string(new_extruder);// 更新前端显示的耗材编号
+                         publish(__client,bambu::msg::runGcode(std::string("M109 S200")));
                     
                 }
 
@@ -465,7 +571,7 @@ volatile bool running_flag{false};
 extern "C" void app_main() {
 
 
-   espstart();//始化电机
+   //espstart();//始化电机
 
    xTaskCreate(Task1,"Task1",2048,NULL,1,&Task1_handle);//微动任务
 
