@@ -37,11 +37,12 @@ int sequence_id = -1;
 std::atomic<int> ams_status = -1;
 std::atomic<bool> pause_lock{false};// 暂停锁
 std::atomic<int> nozzle_target_temper = -1;
-
+int print_error = -1;//打印错误代码用于判断自动续料 50364437是A1 50364420是P1
 //std::atomic<int> hw_switch{0};//小绿点, 其实是布尔
 
 inline constexpr int 正常 = 0;
-inline constexpr int 退料完成需要退线 = 260;
+inline constexpr int 退料完成需要退线 = 260;//A1
+//inline constexpr int 退料完成需要退线 = 259;//P1
 inline constexpr int 退料完成 = 0;// 同正常
 inline constexpr int 进料检查 = 262;
 inline constexpr int 进料冲刷 = 263;// 推测
@@ -270,7 +271,7 @@ void load_filament(int new_extruder) {
     
     {//新写的N20上料
         publish(__client, bambu::msg::get_status);//查询小绿点
-        mstd::delay(5s);//等待查询结果
+        mstd::delay(3s);//等待查询结果
         if (hw_switch == 1) {//有料需要退料
             int old_extruder = extruder;
             if (old_extruder == new_extruder) {
@@ -479,8 +480,15 @@ void callback_fun(esp_mqtt_client_handle_t client, const std::string& json) {// 
     nozzle_target_temper.store(doc["print"]["nozzle_target_temper"] | nozzle_target_temper.load());
     std::string gcode_state = doc["print"]["gcode_state"] | "unkonw";
     hw_switch = doc["print"]["hw_switch_state"] | hw_switch;
+    print_error = doc["print"]["print_error"] | print_error;
+
 
     // fpr("hw_switch:" + std::to_string(hw_switch));//小绿点状态
+    //int nextChannel1 = config::motors[1].next_channel.get_value();
+    //fpr("电机[1]的下一个通道值: " + std::to_string(nextChannel1));
+    fpr("print_error:"+std::to_string(print_error));//打印错误代码
+
+    
 
 
 
