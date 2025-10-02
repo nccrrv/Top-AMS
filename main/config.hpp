@@ -7,7 +7,7 @@
 
 
 #include "web_sync.hpp"
-#define MOTORS_6// 使用当前配置（6通道）注释掉就是8通道
+// #define MOTORS_6// 使用当前配置（6通道）注释掉就是8通道
 #define LOCAL_CONFIG
 
 namespace config {
@@ -55,36 +55,47 @@ namespace config {
 
 
 
-inline std::array<motor, 8> motors{
+    inline std::array<motor, 8> motors{
 #ifdef MOTORS_6
-    // 当前配置（6通道）
-    motor{1, GPIO_NUM_1,  GPIO_NUM_0},   // 通道1
-    motor{2, GPIO_NUM_19, GPIO_NUM_18},  // 通道2
-    motor{3, GPIO_NUM_3,  GPIO_NUM_2},   // 通道3
-    motor{4, GPIO_NUM_6,  GPIO_NUM_10},  // 通道4
-    motor{5, GPIO_NUM_12, GPIO_NUM_7},   // 通道5
-    motor{6, GPIO_NUM_8,  GPIO_NUM_5},   // 通道6
-    motor{7, GPIO_NUM_NC, GPIO_NUM_NC},  // 通道7（未使用）
-    motor{8, GPIO_NUM_NC, GPIO_NUM_NC}   // 通道8（未使用）
+        // 当前配置（6通道）
+        motor{1, GPIO_NUM_1, GPIO_NUM_0},// 通道1
+        motor{2, GPIO_NUM_19, GPIO_NUM_18},// 通道2
+        motor{3, GPIO_NUM_3, GPIO_NUM_2},// 通道3
+        motor{4, GPIO_NUM_6, GPIO_NUM_10},// 通道4
+        motor{5, GPIO_NUM_12, GPIO_NUM_7},// 通道5
+        motor{6, GPIO_NUM_8, GPIO_NUM_5},// 通道6
+        motor{7, GPIO_NUM_NC, GPIO_NUM_NC},// 通道7（未使用）
+        motor{8, GPIO_NUM_NC, GPIO_NUM_NC}// 通道8（未使用）
 #else
-    // 备用配置（8通道）
-    motor{1, GPIO_NUM_2,  GPIO_NUM_3},   // 通道1
-    motor{2, GPIO_NUM_10, GPIO_NUM_6},   // 通道2
-    motor{3, GPIO_NUM_5,  GPIO_NUM_4},   // 通道3
-    motor{4, GPIO_NUM_8,  GPIO_NUM_9},   // 通道4
-    motor{5, GPIO_NUM_0,  GPIO_NUM_1},   // 通道5
-    motor{6, GPIO_NUM_20, GPIO_NUM_21},  // 通道6
-    motor{7, GPIO_NUM_12, GPIO_NUM_13},  // 通道7（注意：GPIO12、13可能和LED冲突）
-    motor{8, GPIO_NUM_18, GPIO_NUM_19}   // 通道8（注意：GPIO18、19和USB冲突）
+        // 备用配置（8通道）
+        motor{1, GPIO_NUM_2, GPIO_NUM_3},// 通道1
+        motor{2, GPIO_NUM_10, GPIO_NUM_6},// 通道2
+        motor{3, GPIO_NUM_5, GPIO_NUM_4},// 通道3
+        motor{4, GPIO_NUM_8, GPIO_NUM_9},// 通道4
+        motor{5, GPIO_NUM_0, GPIO_NUM_1},// 通道5
+        motor{6, GPIO_NUM_20, GPIO_NUM_21},// 通道6
+        motor{7, GPIO_NUM_12, GPIO_NUM_13},// 通道7（注意：GPIO12、13可能和LED冲突）
+        motor{8, GPIO_NUM_18, GPIO_NUM_19}// 通道8（注意：GPIO18、19和USB冲突）
 #endif
-};
+        // //本地调试gpio,记得去掉,或者也在高级展开里可以配置
+        // // 电机要使用的GPIO
+        // motor{1, GPIO_NUM_2, GPIO_NUM_3},// 通道1,前向GPIO,后向GPIO
+        // motor{2, GPIO_NUM_5, GPIO_NUM_4},// 通道3
+        // motor{3, GPIO_NUM_10, GPIO_NUM_6},// 通道2
+        // // motor{GPIO_NUM_5, GPIO_NUM_4},// 通道3
+        // motor{4, GPIO_NUM_8, GPIO_NUM_9},// 通道4
+        // motor{5, GPIO_NUM_0, GPIO_NUM_1},// 通道5
+        // motor{6, GPIO_NUM_20, GPIO_NUM_21},// 通道6
+        // motor{7, GPIO_NUM_12, GPIO_NUM_13},// 通道7,GPIO12,13为灯,避免冲突需要将灯定义改为NC
+        // motor{8, GPIO_NUM_18, GPIO_NUM_19},// 通道8,GPIO18,19和USB冲突,需要带串口芯片或者无协议供电
+    };
 
-// 使用说明：
-// 1. 小白用户自定义电机GPIO时，请仔细查询开发板的引脚定义
-// 2. 例如合宙ESP32-C3应该避开：
-//    - USB使用的18、19
-//    - LED灯的12、13
-// 3. GPIO_NUM_NC表示该引脚不使用
+    // 使用说明：
+    // 1. 小白用户自定义电机GPIO时，请仔细查询开发板的引脚定义
+    // 2. 例如合宙ESP32-C3应该避开：
+    //    - USB使用的18、19
+    //    - LED灯的12、13
+    // 3. GPIO_NUM_NC表示该引脚不使用
 
 
 
