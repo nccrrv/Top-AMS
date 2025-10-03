@@ -260,7 +260,14 @@ void load_filament(int new_extruder) {
 
             extruder = new_extruder;//换料完成
             // ws_extruder = std::to_string(new_extruder);// 更新前端显示的耗材编号
-            // publish(__client, 一段冲刷gcode,冲刷完后记得降温);@_@
+
+            publish(__client,
+                    bambu::msg::runGcode(
+                        std::string("G1 E100 F180\n")//简单冲刷100
+                        + std::string("M400\n") + std::string("M106 P1 S255\n")//风扇全速
+                        + std::string("M400 S3\n")//冷却
+                        + std::string("G1 X -3.5 F18000\nG1 X -13.5 F3000\nG1 X -3.5 F18000\nG1 X -13.5 F3000\nG1 X -3.5 F18000\nG1 X -13.5 F3000\n")//切屎
+                        + std::string("M400\nM106 P1 S0\nM109 S90\n")));//结束并降温到90
         }
         webfpr("上料完成");
     }//新写的N20上料
@@ -376,7 +383,7 @@ void Task1(void* param) {
             motor_run(now_extruder, true, 1s);// 进线
         }
 
-        vTaskDelay(20 / portTICK_PERIOD_MS);//延时1000ms=1
+        mstd::delay(50ms);
     }
 }//微动缓冲程序
 
