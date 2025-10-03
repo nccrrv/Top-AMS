@@ -8,7 +8,7 @@
 
 #include "web_sync.hpp"
 // #define MOTORS_6// 使用当前配置（6通道）注释掉就是8通道
-#define LOCAL_CONFIG
+// #define LOCAL_CONFIG
 
 namespace config {
 
@@ -23,13 +23,20 @@ namespace config {
         mesp::wsStoreValue<string> color;//颜色
         mesp::wsStoreValue<int> next_channel;//续料通道
 
+        mesp::wsStoreValue<int> temper;
+        mesp::wsStoreValue<int> load_time;
+        mesp::wsStoreValue<int> uload_time;
+
         motor() = default;
         motor(int i, gpio_num_t f, gpio_num_t b)
             : forward(f),
               backward(b),
               name("ext" + std::to_string(i) + "_name", "PETG"),
               color("ext" + std::to_string(i) + "_color", "#ffffff"),
-              next_channel("ext" + std::to_string(i) + "_next", i) {}
+              next_channel("ext" + std::to_string(i) + "_next", i),
+              temper("ext" + std::to_string(i) + "_temper", 250),
+              load_time("ext" + std::to_string(i) + "_load_time", 6000),
+              uload_time("ext" + std::to_string(i) + "_uload_time", 5000) {}
     };// motor
 
 
@@ -37,9 +44,6 @@ namespace config {
     //**********************用户配置区开始******************************
     //**********************用户配置区开始******************************
 
-
-    inline mesp::wsStoreValue<int> load_time("load_time", 6000);// 进料运转时间
-    inline mesp::wsStoreValue<int> uload_time("uload_time", 5000);// 退料运转时间
 
 #ifdef MOTORS_6
     inline gpio_num_t forward_click = GPIO_NUM_4;//进料微动
@@ -77,17 +81,7 @@ namespace config {
         motor{7, GPIO_NUM_12, GPIO_NUM_13},// 通道7（注意：GPIO12、13可能和LED冲突）
         motor{8, GPIO_NUM_18, GPIO_NUM_19}// 通道8（注意：GPIO18、19和USB冲突）
 #endif
-        // //本地调试gpio,记得去掉,或者也在高级展开里可以配置
-        // // 电机要使用的GPIO
-        // motor{1, GPIO_NUM_2, GPIO_NUM_3},// 通道1,前向GPIO,后向GPIO
-        // motor{2, GPIO_NUM_5, GPIO_NUM_4},// 通道3
-        // motor{3, GPIO_NUM_10, GPIO_NUM_6},// 通道2
-        // // motor{GPIO_NUM_5, GPIO_NUM_4},// 通道3
-        // motor{4, GPIO_NUM_8, GPIO_NUM_9},// 通道4
-        // motor{5, GPIO_NUM_0, GPIO_NUM_1},// 通道5
-        // motor{6, GPIO_NUM_20, GPIO_NUM_21},// 通道6
-        // motor{7, GPIO_NUM_12, GPIO_NUM_13},// 通道7,GPIO12,13为灯,避免冲突需要将灯定义改为NC
-        // motor{8, GPIO_NUM_18, GPIO_NUM_19},// 通道8,GPIO18,19和USB冲突,需要带串口芯片或者无协议供电
+
     };
 
     // 使用说明：

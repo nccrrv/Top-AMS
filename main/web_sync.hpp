@@ -95,8 +95,8 @@ namespace mesp {
             item["value"] = get_value();
         }
 
+        //构造对应的json且发送
         void update() const {
-            //构造对应的json且发送
             JsonDocument doc;
             JsonObject root = doc.to<JsonObject>();
             root.createNestedArray("data");// 创建data数组
@@ -138,7 +138,7 @@ namespace mesp {
         using wsValue<T>::name;
         using wsValue<T>::value;
         using wsValue<T>::get_value;
-        // using wsValue<T>::set_value;
+        using wsValue<T>::set_value;
         using wsValue<T>::update;
 
         template <typename... V>

@@ -13,7 +13,7 @@ namespace mesp {
 
     using callback_fun_ptr = void (*)(esp_mqtt_client_handle_t, const string&);
 
-    inline int time_out = 0;//@_@超时处理,之后优化一下
+    inline std::atomic<int> time_out = 0;//@_@超时处理,之后优化一下
 
 
     struct Mqttclient {
@@ -53,9 +53,9 @@ namespace mesp {
             case MQTT_EVENT_DATA:
                  //fpr("MQTT_EVENT_DATA（接收到MQTT消息）");
                  //printf("主题=%.*s\r\n",event->topic_len,event->topic);
-                //  printf("%.*s\r\n", event->data_len, event->data);
-                f(client, string(event->data));
+                printf("%.*s\r\n", event->data_len, event->data);
                 time_out = 0;               
+                f(client, string(event->data));
                 break;
             case MQTT_EVENT_ERROR:
                 fpr("MQTT_EVENT_ERROR（MQTT事件错误）");

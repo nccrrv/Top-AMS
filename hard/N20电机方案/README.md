@@ -10,7 +10,7 @@
      alt="橡胶圈" width="300"  /> </a>
 -->
 - N20电机
-  - 参数要求: 6V,60转/min,**额定力距1.5KB·cm**,轴长10mm
+  - 参数要求: 6V,60转/min,**额定力距1.5KG·cm**,轴长10mm
 <!-- 
 https://item.taobao.com/item.htm?_u=u20d07goa52706&id=525167243889&spm=a1z09.2.0.0.2c792e8dpwNFHc&skuId=3586057530498
 -->

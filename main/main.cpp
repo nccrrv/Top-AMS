@@ -15,7 +15,7 @@
 #include "web_sync.hpp"
 
 #if __has_include("localconfig.hpp")
-// #include "localconfig.hpp"
+#include "localconfig.hpp"//发布时去掉这个
 #endif
 
 
@@ -30,9 +30,7 @@ TaskHandle_t Task2_handle;//延时调试信息
 //分割
 
 int bed_target_temper_max = 0;
-// mesp::wsStoreValue<std::string> ws_extruder("extruder", "1");
-mesp::wsValue<std::string> ws_extruder("extruder", "1");
-std::atomic<int> extruder = 1;// 1-16,初始通道默认为1
+mesp::wsStoreValue<int> extruder("extruder", 0);// 1-16, 0表示无耗材
 
 int sequence_id = -1;
 std::atomic<int> print_error = 0;//打印错误代码用于判断自动续料 50364437是A1 50364420是P1
@@ -113,7 +111,7 @@ inline void motor_run(int motor_id, bool fwd, T&& t) {
 // @param fwd 标识方向，true 表示前向，false 表示后向
 inline void motor_run(int motor_id, bool fwd) {
     motor_run(motor_id, fwd,
-              fwd ? config::load_time.get_value() : config::uload_time.get_value());
+              fwd ? config::motors[motor_id - 1].load_time.get_value() : config::motors[motor_id - 1].uload_time.get_value());
 }//motor_run
 
 
@@ -141,21 +139,21 @@ void publish(esp_mqtt_client_handle_t client, const std::string& msg) {
 
 
 //换料
-void change_filament(esp_mqtt_client_handle_t client, int old_extruder) {
+void change_filament(esp_mqtt_client_handle_t client, int old_extruder, int new_extruder) {
 
     constexpr auto fpr = [](const string& r) { webfpr(ws, r); };//重设一下fpr
 
     fpr("开始换料");
     // esp::gpio_out(config::LED_R, false);
-    if (config::load_time.get_value() > 0) {//使用固定时间进料@_@
-        fpr("n20电机逻辑");
-        int new_extruder = extruder;
-        ws_extruder = std::to_string(old_extruder) + string(" → ") + std::to_string(new_extruder);
+    if (config::motors[new_extruder - 1].load_time > 0) {//使用固定时间进料@_@
+        fpr("使用固定时间进料");
+        // ws_extruder = std::to_string(old_extruder) + string(" → ") + std::to_string(new_extruder);
+        //ws_extruder不再使用,可以考虑给前端加一个状态表示正在换料@_@
 
-        publish(client, bambu::msg::runGcode("M211 S \nM211 X1 Y1 Z1\nM1002 push_ref_mode\nG91 \nG1 Z-5.0 F900\nM1002 pop_ref_mode\nM211 R\n"));//防止Z轴抬高
-        fpr("防止Z抬高");
 
-        publish(client, bambu::msg::uload);
+        // publish(client, bambu::msg::uload);
+        publish(client, bambu::msg::runGcode(
+                            "M109 S" + std::to_string(config::motors[old_extruder - 1].temper.get_value()) + "\nM620 S255\nT255\nM621 S255\n"));//新的快速退料
         fpr("发送了退料命令,等待退料完成");
         mstd::atomic_wait_un(ams_status, 退料完成需要退线);
         fpr("退料完成,需要退线,等待退线完");
@@ -164,20 +162,20 @@ void change_filament(esp_mqtt_client_handle_t client, int old_extruder) {
 
         mstd::atomic_wait_un(ams_status, 退料完成);// 应该需要这个wait,打印机或者网络偶尔会卡
 
-        publish(client, bambu::msg::runGcode("M109 S250\n"));
-        while (nozzle_target_temper.load() < 245) {
-            mstd::delay(500ms);// 等待热端温度达到250
+        int new_nozzle_temper = config::motors[new_extruder - 1].temper.get_value();
+        publish(client, bambu::msg::runGcode("M109 S" + std::to_string(new_nozzle_temper)));
+        while (nozzle_target_temper.load() < new_nozzle_temper - 5) {
+            mstd::delay(500ms);// 等待热端温度达到目标温度
         }
         // mstd::delay(5s);//先5s,时间可能取决于热端到250的速度,一个想法是把拉高热端提前能省点时间,但是比较难控制
         //@_@也可以读热端温度,不过如果读==250的话,肯定是挤出机先转,或者可以考虑条件为>240之类
 
         fpr("进线");
-        publish(client, bambu::msg::runGcode("G1 E150 F500\n"));//旋转热端齿轮辅助进料
+        publish(client, bambu::msg::runGcode("G1 E150 F500"));//旋转热端齿轮辅助进料
         mstd::delay(3s);//还是需要延迟,命令落实没这么快
         motor_run(new_extruder, true);// 进线
 
         extruder = new_extruder;//换料完成
-        ws_extruder = std::to_string(new_extruder);// 更新前端显示的耗材编号
 
         // {//旧的使用进线程序的进料过程
         // 	publish(client,bambu::msg::load);
@@ -221,31 +219,38 @@ void load_filament(int new_extruder) {
         mstd::delay(3s);//等待查询结果
         if (hw_switch == 1) {//有料需要退料
             int old_extruder = extruder;
+            if (old_extruder == 0) {
+                webfpr("请设置当前所使用通道,否则无法退料再进料");
+                return;
+            }
             if (old_extruder == new_extruder) {
                 webfpr("当前通道已经是" + std::to_string(new_extruder) + "无需上料");
                 return;
             }
-            ws_extruder = std::to_string(old_extruder) + string(" → ") + std::to_string(new_extruder);
-            publish(__client, bambu::msg::uload);
-            fpr("发送了退料命令,等待退料完成");
+            // ws_extruder = std::to_string(old_extruder) + string(" → ") + std::to_string(new_extruder);
+            // publish(__client, bambu::msg::uload);
+            publish(__client, bambu::msg::runGcode(
+                                  "M109 S" + std::to_string(config::motors[old_extruder - 1].temper.get_value()) + "\nM620 S255\nT255\nM621 S255\n"));//新的快速退料
+            webfpr("发送了退料命令,等待退料完成");
             mstd::atomic_wait_un(ams_status, 退料完成需要退线);
-            fpr("退料完成,需要退线,等待退线完");
+            webfpr("退料完成,需要退线,等待退线完");
 
             motor_run(old_extruder, false);// 退线
 
             mstd::atomic_wait_un(ams_status, 退料完成);// 应该需要这个wait,打印机或者网络偶尔会卡
             webfpr("退线完成");
-        }
+        }//if (hw_switch == 1)
         {//进料
-            publish(__client, bambu::msg::runGcode("M109 S250\n"));
-            while (nozzle_target_temper.load() < 245) {
-                mstd::delay(500ms);// 等待热端温度达到250
+            int new_nozzle_temper = config::motors[new_extruder - 1].temper.get_value();
+            publish(__client, bambu::msg::runGcode("M109 S" + std::to_string(new_nozzle_temper)));
+            while (nozzle_target_temper.load() < new_nozzle_temper - 5) {
+                mstd::delay(500ms);// 等待热端温度达到目标温度
             }
             // mstd::delay(5s);//先5s,时间可能取决于热端到250的速度,一个想法是把拉高热端提前能省点时间,但是比较难控制
             //@_@也可以读热端温度,不过如果读==250的话,肯定是挤出机先转,或者可以考虑条件为>240之类
 
-            fpr("进线");
-            publish(__client, bambu::msg::runGcode("G1 E150 F500\n"));//旋转热端齿轮辅助进料
+            webfpr("进线");
+            publish(__client, bambu::msg::runGcode("G1 E150 F500"));//旋转热端齿轮辅助进料
             mstd::delay(3s);//还是需要延迟,命令落实没这么快
             motor_run(new_extruder, true);// 进线
 
@@ -254,7 +259,7 @@ void load_filament(int new_extruder) {
             */
 
             extruder = new_extruder;//换料完成
-            ws_extruder = std::to_string(new_extruder);// 更新前端显示的耗材编号
+            // ws_extruder = std::to_string(new_extruder);// 更新前端显示的耗材编号
             // publish(__client, 一段冲刷gcode,冲刷完后记得降温);@_@
         }
         webfpr("上料完成");
@@ -262,139 +267,6 @@ void load_filament(int new_extruder) {
 
     return;
 
-    {//TT的上料
-        publish(__client, bambu::msg::get_status);
-        vTaskDelay(3000 / portTICK_PERIOD_MS);
-        if (hw_switch == 0)//没有料所以直接进料
-        {
-
-            extruder = new_extruder;//修改为当前通道
-            esp::gpio_out(config::motors[new_extruder - 1].forward, true);
-            publish(__client, bambu::msg::load);
-
-            for (size_t i = 0; i < 100; i++) {
-                if (hw_switch == 1) {
-                    break;
-                }
-
-                vTaskDelay(1000 / portTICK_PERIOD_MS);//微动进料的时间可以自己改
-                webfpr("进料中");
-            }
-            if (hw_switch == 1) {
-                esp::gpio_out(config::motors[new_extruder - 1].forward, false);
-
-                int A = 0;
-                for (size_t i = 0; i < 100; i++) {
-
-                    if (ams_status == 262) {
-                        if (A == 0) {
-                            motor_run(new_extruder, true, 3s);// 进线
-                            A = 1;
-                        }
-
-                        vTaskDelay(2000 / portTICK_PERIOD_MS);//微动进料的时间可以自己改
-                        publish(__client, bambu::msg::click_done);
-                    }
-                    if (ams_status == 263) {
-                        if (A == 1) {
-                            motor_run(new_extruder, true, 3s);// 进线
-                            A = 2;
-                        }
-                        vTaskDelay(2000 / portTICK_PERIOD_MS);//微动进料的时间可以自己改
-
-                        publish(__client, bambu::msg::click_done);
-                    }
-                    if (ams_status == 进料完成) {
-                        break;
-                    }
-                    vTaskDelay(2000 / portTICK_PERIOD_MS);//微动进料的时间可以自己改
-                }
-
-
-
-                publish(__client, bambu::msg::runGcode(std::string("M109 S200")));
-                webfpr("换料成功");
-                ws_extruder = std::to_string(new_extruder);// 更新前端显示的耗材编号
-
-            } else {
-                webfpr("卡料");
-                esp::gpio_out(config::motors[new_extruder - 1].forward, false);
-                ws_extruder = std::to_string(new_extruder);// 更新前端显示的耗材编号
-                publish(__client, bambu::msg::runGcode(std::string("M109 S200")));
-            }
-        }
-
-        else if (hw_switch == 1) {
-            int old_extruder = extruder;
-
-            publish(__client, bambu::msg::runGcode(std::string("M109 S250")));
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
-            vTaskSuspend(Task1_handle);//关闭前进微动防止意外
-            //减少压力
-            publish(__client, bambu::msg::uload);
-            webfpr("发送了退料命令,等待退料完成");
-            esp::gpio_out(config::motors[old_extruder - 1].backward, true);
-            mstd::delay(4s);
-            esp::gpio_out(config::motors[old_extruder - 1].backward, false);
-
-            mstd::atomic_wait_un(ams_status, 退料完成需要退线);
-            webfpr("退料完成,需要退线,等待退线完");
-            motor_run(old_extruder, false);// 退线
-            mstd::atomic_wait_un(ams_status, 退料完成);//应该需要这个wait,打印机或者网络偶尔会卡
-            vTaskResume(Task1_handle);//恢复微动
-            extruder = new_extruder;//修改为当前通道
-            esp::gpio_out(config::motors[new_extruder - 1].forward, true);
-            publish(__client, bambu::msg::load);
-
-            for (size_t i = 0; i < 100; i++) {
-                if (hw_switch == 1) {
-                    break;
-                }
-
-                vTaskDelay(1000 / portTICK_PERIOD_MS);//微动进料的时间可以自己改
-                webfpr("进料中");
-            }
-            if (hw_switch == 1) {
-                esp::gpio_out(config::motors[new_extruder - 1].forward, false);
-
-
-                int A = 0;
-                for (size_t i = 0; i < 100; i++) {
-
-                    if (ams_status == 262) {
-                        if (A == 0) {
-                            motor_run(new_extruder, true, 3s);// 进线
-                            A = 1;
-                        }
-
-                        vTaskDelay(2000 / portTICK_PERIOD_MS);//微动进料的时间可以自己改
-                        publish(__client, bambu::msg::click_done);
-                    }
-                    if (ams_status == 263) {
-                        if (A == 1) {
-                            motor_run(new_extruder, true, 3s);// 进线
-                            A = 2;
-                        }
-                        vTaskDelay(2000 / portTICK_PERIOD_MS);//微动进料的时间可以自己改
-
-                        publish(__client, bambu::msg::click_done);
-                    }
-                    if (ams_status == 进料完成) {
-                        break;
-                    }
-                    vTaskDelay(2000 / portTICK_PERIOD_MS);//微动进料的时间可以自己改
-                }
-                publish(__client, bambu::msg::runGcode(std::string("M109 S200")));
-                webfpr("换料成功");
-                ws_extruder = std::to_string(new_extruder);// 更新前端显示的耗材编号
-
-            } else {
-                webfpr("卡料");
-                ws_extruder = std::to_string(new_extruder);// 更新前端显示的耗材编号
-                publish(__client, bambu::msg::runGcode(std::string("M109 S200")));
-            }
-        }
-    }
 }//load_filament
 
 
@@ -438,7 +310,7 @@ void callback_fun(esp_mqtt_client_handle_t client, const std::string& json) {// 
 
 
 
-
+    //@_@这边也有些混乱,实质都是因为打印机网络这边不是很稳定所遗留的写法,需要更好的处理
     if (bed_target_temper > 0 && bed_target_temper < 17) {// 读到的温度是通道
         if (gcode_state == "PAUSE") {
             // mstd::delay(4s);//确保暂停动作(3.5s)完成
@@ -450,12 +322,13 @@ void callback_fun(esp_mqtt_client_handle_t client, const std::string& json) {// 
                                     ));
             }
 
-            int old_extruder = extruder.exchange(bed_target_temper);
-            if (old_extruder != bed_target_temper) {//旧通道不等于新通道
+            int old_extruder = extruder;
+            int new_extruder = bed_target_temper;
+            if (old_extruder != new_extruder) {//旧通道不等于新通道
                 fpr("唤醒换料程序");
                 pause_lock = true;
                 async_channel.emplace([=]() {
-                    change_filament(client, old_extruder);
+                    change_filament(client, old_extruder, new_extruder);
                 });
             } else if (!pause_lock.load()) {// 可能会收到旧消息
                 fpr("同一耗材,无需换料");
@@ -471,7 +344,7 @@ void callback_fun(esp_mqtt_client_handle_t client, const std::string& json) {// 
             // 还是会的,只是不一定和温度改变在一条json里
         }
     } else if (bed_target_temper == 0)
-        bed_target_temper_max = 0;// 打印结束or冷打印版
+        bed_target_temper_max = 0;// 打印结束
     else
         bed_target_temper_max = std::max(bed_target_temper, bed_target_temper_max);// 不同材料可能底板温度不一样,这里选择维持最高的
 
@@ -498,9 +371,9 @@ void Task1(void* param) {
         int level = gpio_get_level(config::forward_click);
 
         if (level == 0) {
-            int new_extruder = extruder;
+            int now_extruder = extruder;
             webfpr("微动触发");
-            motor_run(new_extruder, true, 1s);// 进线
+            motor_run(now_extruder, true, 1s);// 进线
         }
 
         vTaskDelay(20 / portTICK_PERIOD_MS);//延时1000ms=1
@@ -514,7 +387,7 @@ void Task2(void* param) {
         mstd::delay(1000ms);
         mesp::time_out++;
         if (mesp::time_out > 8) {
-            webfpr("打印机连接超时检查网络状态");
+            webfpr("打印机连接超时请检查网络状态");
             mstd::delay(5000ms);
         }
     }//延时打印内存信息
@@ -526,7 +399,7 @@ volatile bool running_flag{false};
 
 extern "C" void app_main() {
 #ifndef LOCAL_CONFIG
-    for (size_t i = 0; i < config::motors.size() - 1; i++) {//-1是因为把8初始化了usb调试就没了
+    for (size_t i = 0; i < config::motors.size(); i++) {
         auto& x = config::motors[i];
         esp::gpio_out(x.forward, false);
         esp::gpio_out(x.backward, false);
@@ -575,11 +448,6 @@ extern "C" void app_main() {
         esp::gpio_out(config::LED_R, false);
     }// wifi连接部分
 
-    // mesp::print_memory_info();
-
-    // while (true) {
-    //     mstd::delay(1000ms);
-    // }
 
     using namespace config;
     using namespace ArduinoJson;

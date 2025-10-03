@@ -543,7 +543,7 @@
         <!-- 通道管理面板 -->
         <div id="channel-panel" class="panel-content hidden">
             <div class="channel-controls">
-                <div class="control-group">
+                <!-- <div class="control-group">
                     <label for="load_time">进料时间 (ms):</label>
                     <input type="number" id="load_time" value="5000" min="1000"
                         onchange="sendKeyValue('load_time', this.value)">
@@ -553,11 +553,21 @@
                     <label for="uload_time">退料时间 (ms):</label>
                     <input type="number" id="uload_time" value="5000" min="1000"
                         onchange="sendKeyValue('uload_time', this.value)">
-                </div>
+                </div> -->
 
                 <div class="channel-indicator">
-                    <i class="fas fa-info-circle"></i>
-                    <span>当前通道: <b id="extruder">未选择</b></span>
+                    <label for="extruder">当前通道:</label>
+                    <select class="material-select" id="extruder" onchange="sendKeyValue('extruder', this.value)">
+                        <option value="0">无耗材</option>
+                        <option value="1">通道 1</option>
+                        <option value="2">通道 2</option>
+                        <option value="3">通道 3</option>
+                        <option value="4">通道 4</option>
+                        <option value="5">通道 5</option>
+                        <option value="6">通道 6</option>
+                        <option value="7">通道 7</option>
+                        <option value="8">通道 8</option>
+                    </select>
                 </div>
             </div>
 
@@ -570,6 +580,9 @@
                             <th>通道</th>
                             <th>颜色</th>
                             <th>材料名称</th>
+                            <th>进料时间</th>
+                            <th>退料时间</th>
+                            <th>温度</th>
                             <th>续料通道</th>
                             <th>电机控制</th>
                         </tr>
@@ -666,13 +679,23 @@
                 <input type="color" class="color-picker" id="ext${ch.id}_color" value="${ch.color}" onchange="sendKeyValue(this.id,this.value)">
             </td>
             <td data-label="材料名称">
-                <input type="text" class="material-input" id="ext${ch.id}_name" value="${ch.name}" onchange="sendKeyValue(this.id,this.value)">
+                <input type="text" class="material-input" id="ext${ch.id}_name" value="${ch.name}" onchange="sendKeyValue(this.id,this.value)" style="width: 60px;">
+            </td>
+                <td data-label="进料时间">
+                <input type="number" class="material-input" id="ext${ch.id}_load_time" value="5000" min="100" onchange="sendKeyValue(this.id,this.value)" style="width: 60px;">
+            </td>
+                <td data-label="退料时间">
+                <input type="number" class="material-input" id="ext${ch.id}_uload_time" value="5000" min="100" onchange="sendKeyValue(this.id,this.value)" style="width: 60px;">
+            </td>
+            <td data-label="温度">
+                <input type="number" class="material-input" id="ext${ch.id}_temper" value="250" min="0" max="300" onchange="sendKeyValue(this.id,this.value)" style="width: 60px;">
             </td>
             <td data-label="续料通道">
                 <select class="material-select" id="ext${ch.id}_next" onchange="sendKeyValue(this.id,this.value)">
                     ${createOptions(ch.id)}
                 </select>
             </td>
+
             <td data-label="电机控制" class="btn-group">
                 <button class="btn primary" onclick="sendCommand('motor_forward',${ch.id})">正转</button>
                 <button class="btn warning" onclick="sendCommand('motor_backward',${ch.id})">反转</button>
