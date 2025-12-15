@@ -1,0 +1,83 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # 匹配 v 开头的标签，如 v1.0.0
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Get tag name
+        id: tag
+        run: echo "name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      
+      - name: Build MOTORS_4 version
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.3.2
+          target: esp32c3
+          command: |
+            idf.py build -DMOTOR_CONFIG=MOTORS_4 && \
+            python -m esptool --chip esp32c3 merge_bin -o Top-AMS-MOTORS_4.bin \
+              --flash_mode dio --flash_freq 80m --flash_size 4MB \
+              0x0 build/bootloader/bootloader.bin \
+              0x10000 build/Top-AMS.bin \
+              0x8000 build/partition_table/partition-table.bin && \
+            rm -rf build
+      
+      - name: Build MOTORS_6 version
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.3.2
+          target: esp32c3
+          command: |
+            idf.py build -DMOTOR_CONFIG=MOTORS_6 && \
+            python -m esptool --chip esp32c3 merge_bin -o Top-AMS-MOTORS_6.bin \
+              --flash_mode dio --flash_freq 80m --flash_size 4MB \
+              0x0 build/bootloader/bootloader.bin \
+              0x10000 build/Top-AMS.bin \
+              0x8000 build/partition_table/partition-table.bin && \
+            rm -rf build
+      
+      - name: Build MOTORS_8 version
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.3.2
+          target: esp32c3
+          command: |
+            idf.py build -DMOTOR_CONFIG=MOTORS_8 && \
+            python -m esptool --chip esp32c3 merge_bin -o Top-AMS-MOTORS_8.bin \
+              --flash_mode dio --flash_freq 80m --flash_size 4MB \
+              0x0 build/bootloader/bootloader.bin \
+              0x10000 build/Top-AMS.bin \
+              0x8000 build/partition_table/partition-table.bin
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          name: Release ${{ steps.tag.outputs.name }}
+          body: |
+            ## 版本说明
+            
+            本次发布包含以下三个版本的固件：
+            - **MOTORS_4**: 4通道版本
+            - **MOTORS_6**: 6通道版本
+            - **MOTORS_8**: 8通道版本（其它）
+            
+            ## 使用说明
+            
+            请根据您的硬件配置选择对应的固件进行刷入。
+          files: |
+            Top-AMS-MOTORS_4.bin
+            Top-AMS-MOTORS_6.bin
+            Top-AMS-MOTORS_8.bin
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

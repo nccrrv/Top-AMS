@@ -559,14 +559,6 @@
                     <label for="extruder">当前通道:</label>
                     <select class="material-select" id="extruder" onchange="sendKeyValue('extruder', this.value)">
                         <option value="0">无耗材</option>
-                        <option value="1">通道 1</option>
-                        <option value="2">通道 2</option>
-                        <option value="3">通道 3</option>
-                        <option value="4">通道 4</option>
-                        <option value="5">通道 5</option>
-                        <option value="6">通道 6</option>
-                        <option value="7">通道 7</option>
-                        <option value="8">通道 8</option>
                     </select>
                 </div>
             </div>
@@ -649,21 +641,26 @@
     </div>
 
     <script>
-        const channels = [
-            { id: 1, color: "#3498db", name: "PLA" },
-            { id: 2, color: "#e74c3c", name: "PETG" },
-            { id: 3, color: "#2ecc71", name: "ABS" },
-            { id: 4, color: "#f1c40f", name: "TPU" },
-            { id: 5, color: "#9b59b6", name: "PLA" },
-            { id: 6, color: "#1abc9c", name: "PETG" },
-            { id: 7, color: "#e67e22", name: "ABS" },
-            { id: 8, color: "#34495e", name: "TPU" }
-        ];
+        // 通道配置：由 Python 脚本传入
+        const CHANNEL_COUNT = CHANNEL_COUNT_PLACEHOLDER;
+        
+        // 预设颜色数组
+        const COLOR_PRESETS = ["#3498db", "#e74c3c", "#2ecc71", "#f1c40f", "#9b59b6", "#1abc9c", "#e67e22", "#34495e"];
+        
+        // 预设材料名称数组
+        const MATERIAL_NAMES = ["PLA", "PETG", "ABS", "TPU"];
+        
+        // 自动生成 channels 数组
+        const channels = Array.from({ length: CHANNEL_COUNT }, (_, index) => ({
+            id: index + 1,
+            color: COLOR_PRESETS[index % COLOR_PRESETS.length],
+            name: MATERIAL_NAMES[index % MATERIAL_NAMES.length]
+        }));
 
-        //生成下拉框选项
+        // 生成下拉框选项
         function createOptions(selectedId) {
             let opts = "";
-            for (let i = 1; i <= 8; i++) {
+            for (let i = 1; i <= CHANNEL_COUNT; i++) {
                 opts += `<option value="${i}" ${i === selectedId ? "selected" : ""}>通道 ${i}</option>`;
             }
             return opts;
@@ -843,8 +840,18 @@
             sendKeyValue(this.id, this.value);
         }
 
-        // 初始化状态指示器
+        // 初始化状态指示器和通道选择下拉框
         document.addEventListener('DOMContentLoaded', function () {
+            // 初始化通道选择下拉框
+            const extruderSelect = document.getElementById("extruder");
+            for (let i = 1; i <= CHANNEL_COUNT; i++) {
+                const option = document.createElement("option");
+                option.value = i;
+                option.textContent = `通道 ${i}`;
+                extruderSelect.appendChild(option);
+            }
+            
+            // 初始化状态指示器
             espDot.classList.add('disconnected');
             mqttDot.classList.add('disconnected');
             addLog('AMS控制台已加载', 'success');

@@ -7,7 +7,9 @@
 
 
 #include "web_sync.hpp"
-// #define MOTORS_6// 使用当前配置（6通道）注释掉就是8通道
+// #define MOTORS_4 // 使用4通道配置
+// #define MOTORS_6 // 使用6通道配置
+// 默认8通道配置
 // #define LOCAL_CONFIG
 
 namespace config {
@@ -45,7 +47,9 @@ namespace config {
     //**********************用户配置区开始******************************
 
 
-#ifdef MOTORS_6
+#ifdef MOTORS_4
+    inline gpio_num_t forward_click = GPIO_NUM_7;//进料微动
+#elif defined(MOTORS_6)
     inline gpio_num_t forward_click = GPIO_NUM_4;//进料微动
 #else
     inline gpio_num_t forward_click = GPIO_NUM_7;
@@ -60,7 +64,17 @@ namespace config {
 
 
     inline std::array<motor, 8> motors{
-#ifdef MOTORS_6
+#ifdef MOTORS_4
+        // 4通道配置
+        motor{1, GPIO_NUM_2, GPIO_NUM_3},// 通道1
+        motor{2, GPIO_NUM_10, GPIO_NUM_6},// 通道2
+        motor{3, GPIO_NUM_5, GPIO_NUM_4},// 通道3
+        motor{4, GPIO_NUM_8, GPIO_NUM_9},// 通道4
+        motor{5, GPIO_NUM_NC, GPIO_NUM_NC},// 通道5（未使用）
+        motor{6, GPIO_NUM_NC, GPIO_NUM_NC},// 通道6（未使用）
+        motor{7, GPIO_NUM_NC, GPIO_NUM_NC},// 通道7（未使用）
+        motor{8, GPIO_NUM_NC, GPIO_NUM_NC}// 通道8（未使用）
+#elif defined(MOTORS_6)
         // 当前配置（6通道）
         motor{1, GPIO_NUM_1, GPIO_NUM_0},// 通道1
         motor{2, GPIO_NUM_19, GPIO_NUM_18},// 通道2

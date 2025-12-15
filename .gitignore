@@ -7,3 +7,4 @@ localconfig.hpp
 temp/
 main/index.hpp
 Top-AMS.bin
+.DS_Store
