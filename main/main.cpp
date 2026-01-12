@@ -551,9 +551,18 @@ void Task1(void* param) {
         int level = gpio_get_level(config::forward_click);
 
         if (level == 0) {
-            int now_extruder = extruder;
-            webfpr("微动触发");
-            motor_run(now_extruder, true, 1s);// 进线
+            // 检查辅助进料开关是否开启
+            if (config::assist_feeding_enabled.get_value() == 1) {
+                int now_extruder = extruder.get_value();
+                if (now_extruder > 0 && now_extruder <= config::motors.size()) {
+                    webfpr("微动触发，辅助进料");
+                    motor_run(now_extruder, true, 1s);// 进线
+                } else {
+                    webfpr("微动触发，但当前无有效通道");
+                }
+            } else {
+                webfpr("微动触发，但辅助进料已关闭");
+            }
         }
 
         mstd::delay(50ms);

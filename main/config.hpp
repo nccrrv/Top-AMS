@@ -111,6 +111,7 @@ namespace config {
     mesp::wsStoreValue<string> bambu_ip("bambu_ip", "192.168.1.1");
     mesp::wsStoreValue<string> MQTT_pass("MQTT_pass", "");
     mesp::wsStoreValue<string> device_serial("device_serial", "");
+    mesp::wsStoreValue<int> assist_feeding_enabled("assist_feeding_enabled", 1);// 辅助进料开关，1=开启，0=关闭
 
     //**********************用户配置区结束******************************
     //**********************用户配置区结束******************************

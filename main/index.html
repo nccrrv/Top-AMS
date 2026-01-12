@@ -479,6 +479,57 @@
             color: var(--danger-color);
         }
 
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--success-color);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .switch-label {
+            margin-left: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+
         .btn:disabled,
         .action-btn:disabled {
             opacity: 0.5;
@@ -648,6 +699,14 @@
                 <div class="status-item">
                     <label>电机运行:</label>
                     <span class="status-value" id="motor-running">无</span>
+                </div>
+                <div class="status-item">
+                    <label>辅助进料:</label>
+                    <label class="switch">
+                        <input type="checkbox" id="assist-feeding-switch" onchange="toggleAssistFeeding(this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                    <span class="switch-label" id="assist-feeding-status">开启</span>
                 </div>
             </div>
 
@@ -947,6 +1006,16 @@
                         if (extruderSelect) {
                             extruderSelect.value = item.value || 0;
                         }
+                    } else if (item.name == 'assist_feeding_enabled') {
+                        // 更新辅助进料开关状态
+                        const switchEl = document.getElementById('assist-feeding-switch');
+                        const statusEl = document.getElementById('assist-feeding-status');
+                        if (switchEl) {
+                            switchEl.checked = (item.value == 1);
+                        }
+                        if (statusEl) {
+                            statusEl.textContent = (item.value == 1) ? '开启' : '关闭';
+                        }
                     } else {
                         const element = document.getElementById(item.name);
                         const propertyPriority = ['value', 'textContent', 'innerHTML'];
@@ -1046,6 +1115,16 @@
             };
             ws.send(JSON.stringify(doc));
             addLog(`更新参数: ${_key} = ${_value}`, 'info');
+        }
+
+        // 切换辅助进料开关
+        function toggleAssistFeeding(enabled) {
+            const value = enabled ? 1 : 0;
+            sendKeyValue('assist_feeding_enabled', value);
+            const statusEl = document.getElementById('assist-feeding-status');
+            if (statusEl) {
+                statusEl.textContent = enabled ? '开启' : '关闭';
+            }
         }
 
         function addLog(message, type = 'info') {
