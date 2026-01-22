@@ -92,7 +92,8 @@ namespace mesp {
             JsonArray data = doc["data"].as<JsonArray>();
             JsonObject item = data.createNestedObject();
             item["name"] = name;
-            item["value"] = get_value();
+            value_type val = get_value();
+            item["value"] = val;
         }
 
         //构造对应的json且发送

@@ -29,20 +29,38 @@ namespace mesp {
 
             switch (esp_mqtt_event_id_t(event_id)) {
             case MQTT_EVENT_CONNECTED:
-                fpr("MQTT_EVENT_CONNECTED（MQTT连接成功）");
+                if (This.state == mqtt_state::disconnected || This.state == mqtt_state::error) {
+                    fpr("MQTT_EVENT_CONNECTED（MQTT重连成功）");
+                } else {
+                    fpr("MQTT_EVENT_CONNECTED（MQTT连接成功）");
+                }
+                fpr("MQTT会话已建立");
                 This.state = mqtt_state::connected;
                 This.state.notify_all();
                 break;
             case MQTT_EVENT_DISCONNECTED:
                 fpr("MQTT_EVENT_DISCONNECTED（MQTT断开连接）");
+                if (event->error_handle) {
+                    fpr("断开原因 - 错误类型: ", event->error_handle->error_type);
+                    if (event->error_handle->error_type == MQTT_ERROR_TYPE_TCP_TRANSPORT) {
+                        fpr("TCP传输错误，将自动重连");
+                    } else if (event->error_handle->error_type == MQTT_ERROR_TYPE_CONNECTION_REFUSED) {
+                        fpr("连接被拒绝，返回码: ", event->error_handle->connect_return_code);
+                    }
+                } else {
+                    fpr("正常断开或网络异常，将自动重连");
+                }
                 This.state = mqtt_state::disconnected;
                 This.state.notify_all();
                 break;
             case MQTT_EVENT_BEFORE_CONNECT:
-                fpr("Mqtt连接前");
+                fpr("MQTT_EVENT_BEFORE_CONNECT（MQTT连接前，正在尝试连接...）");
                 break;
             case MQTT_EVENT_SUBSCRIBED:
                 fpr("MQTT_EVENT_SUBSCRIBED（MQTT订阅成功），msg_id=", event->msg_id);
+                if (event->topic_len > 0) {
+                    fpr("订阅主题: ", string(event->topic, event->topic_len));
+                }
                 break;
             case MQTT_EVENT_UNSUBSCRIBED:
                 fpr("MQTT_EVENT_UNSUBSCRIBED（MQTT取消订阅成功），msg_id=", event->msg_id);
@@ -51,29 +69,35 @@ namespace mesp {
                 fpr("MQTT_EVENT_PUBLISHED（MQTT消息发布成功），msg_id=", event->msg_id);
                 break;
             case MQTT_EVENT_DATA:
-                 //fpr("MQTT_EVENT_DATA（接收到MQTT消息）");
-                 //printf("主题=%.*s\r\n",event->topic_len,event->topic);
-                printf("%.*s\r\n", event->data_len, event->data);
+                // fpr("MQTT_EVENT_DATA（接收到MQTT消息）");
+                if (event->topic_len > 0) {
+                    fpr("收到消息，主题: ", string(event->topic, event->topic_len), ", 数据长度: ", event->data_len);
+                }
+                fpr(string(event->data, event->data_len));
                 time_out = 0;               
-                f(client, string(event->data));
+                f(client, string(event->data, event->data_len));
                 break;
             case MQTT_EVENT_ERROR:
                 fpr("MQTT_EVENT_ERROR（MQTT事件错误）");
-                if (event->error_handle->error_type == MQTT_ERROR_TYPE_TCP_TRANSPORT) {
-                    fpr("从esp-tls报告的最后错误代码：", event->error_handle->esp_tls_last_esp_err);
-                    fpr("TLS堆栈最后错误号：", event->error_handle->esp_tls_stack_err);
-                    fpr("最后捕获的errno：", event->error_handle->esp_transport_sock_errno,
-                        strerror(event->error_handle->esp_transport_sock_errno));
-                } else if (event->error_handle->error_type == MQTT_ERROR_TYPE_CONNECTION_REFUSED) {
-                    fpr("连接被拒绝错误：", event->error_handle->connect_return_code);
-                } else {
-                    fpr("未知的错误类型：", event->error_handle->error_type);
+                if (event->error_handle) {
+                    if (event->error_handle->error_type == MQTT_ERROR_TYPE_TCP_TRANSPORT) {
+                        fpr("TCP传输错误 - esp-tls错误代码：", event->error_handle->esp_tls_last_esp_err);
+                        fpr("TLS堆栈错误号：", event->error_handle->esp_tls_stack_err);
+                        fpr("Socket错误：", event->error_handle->esp_transport_sock_errno,
+                            " (", strerror(event->error_handle->esp_transport_sock_errno), ")");
+                        fpr("将自动尝试重连");
+                    } else if (event->error_handle->error_type == MQTT_ERROR_TYPE_CONNECTION_REFUSED) {
+                        fpr("连接被拒绝，返回码：", event->error_handle->connect_return_code);
+                        fpr("可能原因：用户名/密码错误、服务器拒绝连接等");
+                    } else {
+                        fpr("未知的错误类型：", event->error_handle->error_type);
+                    }
                 }
                 This.state = mqtt_state::error;
                 This.state.notify_all();
                 break;
             default:
-                fpr("其他事件id:", event->event_id);
+                fpr("其他MQTT事件id:", event->event_id);
                 break;
             }
         }// mqtt_event_callback
@@ -100,13 +124,27 @@ namespace mesp {
     mqtt_cfg.credentials.username = user.c_str();
     mqtt_cfg.credentials.authentication.password = pass.c_str();
 
-  
-    // 关键优化配置
+    // 会话配置
+    mqtt_cfg.session.keepalive = 60;              // 心跳间隔60秒（Keep-Alive）
+    mqtt_cfg.session.disable_clean_session = false; // 启用clean session
+    mqtt_cfg.session.protocol_ver = MQTT_PROTOCOL_V_3_1_1; // 使用MQTT 3.1.1协议
+    
+    // 网络配置
+    mqtt_cfg.network.reconnect_timeout_ms = 5000; // 5秒重连超时
+    mqtt_cfg.network.timeout_ms = 10000;          // 10秒网络超时
+    mqtt_cfg.network.disable_auto_reconnect = false; // 启用自动重连（默认启用）
+    
+    // 缓冲区配置
     mqtt_cfg.buffer.size = 4096;                  // 增大接收缓冲区
     mqtt_cfg.buffer.out_size = 2048;              // 发送缓冲区
-    mqtt_cfg.network.reconnect_timeout_ms = 5000; // 5秒重连
+    
+    // 任务配置
     mqtt_cfg.task.stack_size = 6144;              // 增大任务栈
     mqtt_cfg.task.priority = 5;                   // 提高任务优先级
+
+    fpr("初始化MQTT客户端，服务器: ", server);
+    fpr("Keep-Alive心跳间隔: ", mqtt_cfg.session.keepalive, "秒");
+    fpr("自动重连: 启用，重连超时: ", mqtt_cfg.network.reconnect_timeout_ms, "毫秒");
 
     client = esp_mqtt_client_init(&mqtt_cfg);
     error_check(esp_mqtt_client_register_event(client, MQTT_EVENT_ANY, Mqttclient::mqtt_event_callback, this), "Mqtt注册事件失败");
