@@ -4,6 +4,7 @@ convert_html_to_hpp.py
 """
 
 import argparse
+import sys
 
 def convert_html_to_hpp(input_file, output_file, header_str="", footer_str=""):
     try:
@@ -44,6 +45,7 @@ def convert_html_to_hpp(input_file, output_file, header_str="", footer_str=""):
         print(f"错误: {str(e)}")
 
 if __name__ == "__main__":
+    sys.stdout.reconfigure(encoding='utf-8')
     parser = argparse.ArgumentParser(description="HTML转HPP工具")
     parser.add_argument('-i', '--input', default='index.html', help='输入文件路径')
     parser.add_argument('-o', '--output', default='index.hpp', help='输出文件路径')

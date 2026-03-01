@@ -406,11 +406,11 @@ volatile bool running_flag{false};
 
 extern "C" void app_main() {
 #ifndef LOCAL_CONFIG
-    for (size_t i = 0; i < config::motors.size(); i++) {
-        auto& x = config::motors[i];
-        esp::gpio_out(x.forward, false);
-        esp::gpio_out(x.backward, false);
-    }//初始化电机GPIO
+    // for (size_t i = 0; i < config::motors.size(); i++) {
+    //     auto& x = config::motors[i];
+    //     esp::gpio_out(x.forward, false);
+    //     esp::gpio_out(x.backward, false);
+    // }//初始化电机GPIO
 #endif
 
     xTaskCreate(Task1, "Task1", 2048, NULL, 1, &Task1_handle);//微动任务
@@ -522,6 +522,8 @@ extern "C" void app_main() {
 
                 const std::string command = doc["action"]["command"] | string("_null");
                 if (command != "_null") {//处理命令json
+                    heap_caps_print_heap_info(MALLOC_CAP_DEFAULT);
+
                     if (command == "motor_forward") {//电机前向控制
                         int motor_id = doc["action"]["value"] | -1;
                         async_channel.emplace(

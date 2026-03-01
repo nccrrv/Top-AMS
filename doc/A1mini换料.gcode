@@ -1,6 +1,6 @@
 ;====TOP-AMS====A1mini====2025年4月4日19:18:04====start=====
 
-{if toolchange_count > 1}
+{if toolchange_count > 1};orca切片不需要这个判断,能在真正换色开始的时候才计数,注释本行和末行(待测
 G17
 G2 Z{max_layer_z + 0.4} I0.86 J0.86 P1 F10000 ;回抽抬升
 ;endif;放在结尾,目前设定首次就不换色,如果想要首次换色,取消本行注释,且注释本文件最后一行的endif
