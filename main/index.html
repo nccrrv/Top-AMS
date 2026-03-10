@@ -200,6 +200,63 @@
             transform: translateY(0);
         }
 
+        /* 开机连接开关样式 */
+        .switch {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            vertical-align: middle;
+        }
+
+        .switch input {
+            display: none;
+        }
+
+        .slider {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            background: #ccc;
+            border-radius: 34px;
+            transition: .3s;
+            display: inline-block;
+        }
+
+        .slider:before {
+            content: "";
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            left: 3px;
+            top: 3px;
+            background: #fff;
+            border-radius: 50%;
+            transition: .3s;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+        }
+
+        /* Ensure the slider and label text align vertically */
+        .switch .slider {
+            vertical-align: middle;
+            display: inline-block;
+        }
+
+        .switch span:last-child {
+            display: inline-block;
+            vertical-align: middle;
+            line-height: 1;
+        }
+
+        .switch input:checked+.slider {
+            background: var(--secondary-color);
+            box-shadow: 0 0 6px rgba(52, 152, 219, 0.3);
+        }
+
+        .switch input:checked+.slider:before {
+            transform: translateX(20px);
+        }
+
         .action-btn.danger {
             background: var(--danger-color);
         }
@@ -476,8 +533,9 @@
             <span id="wifi-status">ESP32</span>
         </div>
         <div class="status-indicator">
-            <span class="status-dot" id="mqtt-dot"></span>
-            <span id="mqtt-status">MQTT</span>
+            <!-- <span class="status-dot" id="mqtt-dot"></span> -->
+            <span>MQTT : </span>
+            <span id="mqtt_state">MQTT</span>
         </div>
     </div>
 
@@ -499,20 +557,30 @@
             <div class="input-grid">
                 <div class="input-group">
                     <label for="bambu_ip">打印机 IP 地址</label>
-                    <input type="text" id="bambu_ip" placeholder="192.168.1.1">
+                    <input type="text" id="bambu_ip" placeholder="192.168.1.1"
+                        onchange="sendKeyValue('bambu_ip', this.value)">
                     <div class="help-text">在打印机设置-网络里可以查看</div>
                 </div>
 
                 <div class="input-group">
                     <label for="device_serial">设备序列号</label>
-                    <input type="text" id="device_serial" placeholder="">
+                    <input type="text" id="device_serial" placeholder=""
+                        onchange="sendKeyValue('device_serial', this.value)">
                     <div class="help-text">在打印机设置里可以查看</div>
                 </div>
 
                 <div class="input-group">
                     <label for="MQTT_pass">MQTT 密码</label>
-                    <input type="text" id="MQTT_pass" placeholder="">
+                    <input type="text" id="MQTT_pass" placeholder="" onchange="sendKeyValue('MQTT_pass', this.value)">
                     <div class="help-text">打印机设置局域网模式里的密码,不需要开启局域网模式</div>
+                    <div style="margin-top:10px;">
+                        <label class="switch" title="开机连接">
+                            <input type="checkbox" id="boot_connect"
+                                onchange="sendKeyValue('boot_connect', this.checked)">
+                            <span class="slider"></span>
+                            <span style="margin-left:8px;font-weight:500;">开机连接</span>
+                        </label>
+                    </div>
                 </div>
             </div>
 
@@ -520,9 +588,7 @@
                 <button class="action-btn success" onclick="sendMQTT()">
                     <i class="fas fa-plug"></i> 连接打印机
                 </button>
-                <button class="action-btn" onclick="showTab('channel-panel')">
-                    <i class="fas fa-arrow-right"></i> 跳过配置
-                </button>
+
             </div>
         </div>
 
@@ -531,6 +597,11 @@
             <div class="log-panel">
                 <div class="log-header">
                     <h4><i class="fas fa-terminal"></i> 系统运行日志</h4>
+                    <label class="switch" title="打印机JSON">
+                        <input type="checkbox" id="printer_json" onchange="sendKeyValue('printer_json', this.checked)">
+                        <span class="slider"></span>
+                        <span style="margin-left:8px;font-weight:500;">打印机JSON</span>
+                    </label>
                 </div>
                 <div class="log-content" id="log-content">
                     <!-- <div class="log-entry info">[INFO] 系统初始化完成，等待连接...</div>
@@ -682,10 +753,10 @@
                 <input type="text" class="material-input" id="ext${ch.id}_name" value="${ch.name}" onchange="sendKeyValue(this.id,this.value)" style="width: 60px;">
             </td>
                 <td data-label="进料时间">
-                <input type="number" class="material-input" id="ext${ch.id}_load_time" value="5000" min="100" onchange="sendKeyValue(this.id,this.value)" style="width: 60px;">
+                <input type="number" class="material-input" id="ext${ch.id}_load" value="5000" min="100" onchange="sendKeyValue(this.id,this.value)" style="width: 60px;">
             </td>
                 <td data-label="退料时间">
-                <input type="number" class="material-input" id="ext${ch.id}_uload_time" value="5000" min="100" onchange="sendKeyValue(this.id,this.value)" style="width: 60px;">
+                <input type="number" class="material-input" id="ext${ch.id}_uload" value="5000" min="100" onchange="sendKeyValue(this.id,this.value)" style="width: 60px;">
             </td>
             <td data-label="温度">
                 <input type="number" class="material-input" id="ext${ch.id}_temper" value="250" min="0" max="300" onchange="sendKeyValue(this.id,this.value)" style="width: 60px;">
@@ -707,61 +778,116 @@
         });
         // 上面都是生成通道管理的
 
-
-        const ws = new WebSocket('ws://' + window.location.hostname + '/ws');
         const espDot = document.getElementById('esp-dot');
         const mqttDot = document.getElementById('mqtt-dot');
-        let currentChannels = [];
 
-        ws.onopen = function () {
-            espDot.classList.add('connected');
-            espDot.classList.remove('disconnected');
-            addLog('WebSocket连接已建立', 'success');
-        };
+        // const ws = new WebSocket('ws://' + '192.168.5.8' + '/ws');
+        const ws = new WebSocket('ws://' + window.location.hostname + '/ws');
 
-        ws.onclose = function () {
-            espDot.classList.add('disconnected');
-            espDot.classList.remove('connected');
-            addLog('WebSocket连接已关闭', 'warning');
-        };
 
-        ws.onmessage = function (event) {
-            const doc = JSON.parse(event.data);
-            if (doc.data) {
-                doc.data.forEach(item => {
-                    //MQTT的先特化处理
-                    if (item.name == 'MQTT_done') {
-                        if (item.value) {
-                            mqttDot.classList.add('connected');
-                            mqttDot.classList.remove('disconnected');
-                            addLog('MQTT连接成功', 'success');
-                        } else {
-                            mqttDot.classList.add('disconnected');
-                            mqttDot.classList.remove('connected');
-                            addLog('MQTT连接失败', 'error');
-                        }
-                    } else {
+        function connectWebSocket() {
+            const statusEl = document.getElementById('status');
+
+
+            let heartbeatInterval = null;
+            const heartbeatTime = 3000;
+            // 3秒心跳一次
+            const heartbeat_timeout_ms = 10000;
+            let lastHeartbeatTs = 0;
+
+
+            function wsdot_ON() {
+                espDot.classList.add('connected');
+                espDot.classList.remove('disconnected');
+            }
+            function wsdot_OFF() {
+                espDot.classList.add('disconnected');
+                espDot.classList.remove('connected');
+            }
+
+            ws.onopen = function () {
+                log('WebSocket连接成功', 'info');
+                startHeartbeat();
+                lastHeartbeatTs = Date.now();
+                wsdot_ON();
+            };
+            ws.onmessage = function (event) {
+                const doc = JSON.parse(event.data);
+                if (doc.data) {
+                    //更新元素
+                    doc.data.forEach(item => {
                         const element = document.getElementById(item.name);
                         const propertyPriority = ['value', 'textContent', 'innerHTML'];
 
                         if (element) {
-                            const validProperty = propertyPriority.find(prop => prop in element);
-                            if (validProperty)
-                                element[validProperty] = item.value;
+                            // 支持 checkbox（滑动开关）更新
+                            if (element.tagName === 'INPUT' && element.type === 'checkbox') {
+                                // 后端保证传 boolean true/false，直接赋值
+                                element.checked = item.value;
+                            } else {
+                                const validProperty = propertyPriority.find(prop => prop in element);
+                                if (validProperty)
+                                    element[validProperty] = item.value;
+                            }
                         } else {
-                            addLog(`未找到元素: ${item.name}`, 'error');
+                            log(`未找到元素: ${item.name}`, 'error');
                         }
-                    }
-                });
-            }
-            if (doc.log) {
-                addLog(doc.log, 'info');
-            }
-        };
 
-        ws.onerror = function (error) {
-            addLog('WebSocket错误: ' + error.message, 'error');
-        };
+                    });
+                }
+                if (doc.log) {
+                    log(doc.log, 'info');
+                }
+                if (doc.pong) {
+                    // log('收到pong响应: ' + doc.pong);
+                    lastHeartbeatTs = doc.pong;
+                }
+            };
+            ws.onclose = function () {
+                log('WebSocket断开', 'info');
+                wsdot_OFF();
+                lastHeartbeatTs = 0;
+                stopHeartbeat();
+            };
+            ws.error = function (error) {
+                log('WebSocket错误: ' + error.message, 'error');
+                wsdot_OFF();
+                stopHeartbeat();
+            };
+
+            // 开始心跳
+            function startHeartbeat() {
+                heartbeatInterval = setInterval(() => {
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({
+                            ping: Date.now()
+                        }));
+                    }
+                }, heartbeatTime);
+            }
+
+            // 停止心跳
+            function stopHeartbeat() {
+                if (heartbeatInterval) {
+                    clearInterval(heartbeatInterval);
+                    heartbeatInterval = null;
+                }
+            }
+
+            //心跳检查
+            const heartbeatChecker = setInterval(() => {
+                const age = Date.now() - lastHeartbeatTs;
+                // log(`心跳检查，距离上次pong响应已过 ${age} ms`);
+                if (age > heartbeat_timeout_ms) {
+                    wsdot_OFF();
+                } else {
+                    wsdot_ON();
+                }
+            }, heartbeatTime);
+        }
+
+
+        connectWebSocket();
 
         function showTab(tabId) {
             document.querySelectorAll('.tab-btn').forEach(btn => { btn.classList.remove('active') });
@@ -774,25 +900,10 @@
 
         // 发送MQTT参数
         function sendMQTT() {
-            const doc = {
-                data: [
-                    {
-                        name: "MQTT_pass",
-                        value: document.getElementById('MQTT_pass').value
-                    },
-                    {
-                        name: "bambu_ip",
-                        value: document.getElementById('bambu_ip').value
-                    },
-                    {
-                        name: "device_serial",
-                        value: document.getElementById('device_serial').value
-                    }
-                ]
-            };
-            ws.send(JSON.stringify(doc));
+            // 触发设备侧统一的启动命令；输入框变更已由 onchange 自动上报
+            sendCommand('MQTT_connect', 0);
             showTab('main-panel');
-            addLog('正在连接打印机...', 'info');
+            log('正在连接打印机...', 'info');
         }
 
         // @brief 发送命令
@@ -806,7 +917,7 @@
                 }
             };
             ws.send(JSON.stringify(doc));
-            addLog(`发送命令: ${_command} (value: ${_value})`, 'info');
+            log(`发送命令: ${_command} (value: ${_value})`, 'info');
         }
 
         //发送键值对
@@ -820,10 +931,10 @@
                 ]
             };
             ws.send(JSON.stringify(doc));
-            addLog(`更新参数: ${_key} = ${_value}`, 'info');
+            log(`更新参数: ${_key} = ${_value}`, 'info');
         }
 
-        function addLog(message, type = 'info') {
+        function log(message, type = 'info') {
             const logElement = document.getElementById('log-content');
             const logEntry = document.createElement('div');
             logEntry.className = `log-entry ${type}`;
@@ -846,9 +957,11 @@
         // 初始化状态指示器
         document.addEventListener('DOMContentLoaded', function () {
             espDot.classList.add('disconnected');
-            mqttDot.classList.add('disconnected');
-            addLog('AMS控制台已加载', 'success');
+            // mqttDot.classList.add('disconnected');
+            log('AMS控制台已加载', 'success');
         });
+
+
     </script>
 </body>
 

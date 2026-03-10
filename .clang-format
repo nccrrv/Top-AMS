@@ -1,4 +1,4 @@
-BasedOnStyle: LLVM  # 或 Google、Chromium 等
+BasedOnStyle: LLVM  
 
 BreakBeforeBraces: Custom  # 自定义大括号样式
 BraceWrapping:
@@ -21,12 +21,26 @@ MaxEmptyLinesToKeep: 5  # 连续空行的最大数量
 AlignTrailingComments: false # 关闭注释对齐 
 ReflowComments: false  # 不自动重排注释内容
 SpacesBeforeTrailingComments: 0
-SpacesAfterTrailingComments: 0
-SpacesInLineBreaks: true    # 在换行运算符（如 <<, >>）前后加空格
+# SpacesAfterTrailingComments: 0
+# SpacesInLineBreaks: true    # 在换行运算符（如 <<, >>）前后加空格
 # SpacesInParentheses: false  # 括号内不加空格（保持紧凑）
 # SpacesInSquareBrackets: false  # 数组方括号内不加空格
 
 ReferenceAlignment: Left  # T&
 PointerAlignment: Left    # T*
 
-#https://zhuanlan.zhihu.com/p/356143396
+IndentRequiresClause: true  # requires 缩进
+# RequiresClausePosition: OwnLine  # requires 单独一行
+RequiresClausePosition: OwnLineWithBrace  # requires 单独一行但与大括号同行
+# RequiresClausePosition: WithPreceding  # requires 与前面内容同行  实际表现不会主动控制换行,但是换行会失去缩进
+# RequiresClausePosition: WithFollowing  # requires 与后面内容同行
+# RequiresClausePosition: SingleLine  # requires 尽可能单行
+
+SpaceBeforeParens: Custom
+SpaceBeforeParensOptions:
+  AfterRequiresInClause: true
+
+
+
+
+#https://clang.llvm.org/docs/ClangFormatStyleOptions.html

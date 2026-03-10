@@ -1,45 +1,33 @@
-﻿#pragma once
+/*
+* Copyright (C) 2025-2026 by nccrrv
+* SPDX-License-Identifier: AGPL-3.0-or-later
+* 
+* espIO.hpp
+* 简单的esp输入输出包装
+*/
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/event_groups.h"
-#include "freertos/task.h"
+#pragma once
 
-#include "esp_event.h"
-#include "esp_log.h"
-#include "nvs_flash.h"
-
-
-#include "esp_event.h"
-#include "esp_netif.h"
-#include "esp_partition.h"
-#include "esp_system.h"
-#include "nvs_flash.h"
+#include "../mstd/other.hpp"
+#include "config.hpp"
 
 
-#include "driver/gpio.h"
-#include "esp_timer.h"
-#include "freertos/queue.h"
+namespace mesp {
 
-#include "tools.hpp"
-#include <chrono>
-#include <tuple>
-#include <vector>
+    inline std::array<gpio_config_t, config::MAX_GPIO> gpio_state{};
 
-namespace esp {
-
-    inline std::vector<gpio_config_t> gpio_state;
-    inline mstd::call_once __gpio_state_init{
-        [](std::vector<gpio_config_t>& v) {
-            for (size_t i = 0; i < 64; i++)
-                v.emplace_back(
-                    1ull << i,            //设置要操作的接口,掩码结构
-                    GPIO_MODE_DISABLE,    // 设置是输入还是输出
-                    GPIO_PULLUP_DISABLE,  //开关上拉
-                    GPIO_PULLDOWN_DISABLE,//开关下拉
-                    GPIO_INTR_DISABLE     // 开关中断
-                );
-        },
-        gpio_state};
+    inline mstd::call_once __init_gpio(
+        []() {
+            for (size_t i = 0; i < config::MAX_GPIO; ++i) {
+                gpio_state[i] = {
+                    1ull << i,// 设置要操作的接口,掩码结构
+                    GPIO_MODE_DISABLE,// 设置是输入还是输出
+                    GPIO_PULLUP_DISABLE,// 开关上拉
+                    GPIO_PULLDOWN_DISABLE,// 开关下拉
+                    GPIO_INTR_DISABLE// 开关中断
+                };
+            }
+        });
 
 
     //普通输出
@@ -47,11 +35,11 @@ namespace esp {
 
         if (gpio_state[IO].mode != GPIO_MODE_OUTPUT) {
             gpio_config_t io_conf = {
-                1ull << IO,           // 设置要操作的接口,掩码结构
-                GPIO_MODE_OUTPUT,     // 设置是输入还是输出
-                GPIO_PULLUP_DISABLE,  //开关上拉
+                1ull << IO,// 设置要操作的接口,掩码结构
+                GPIO_MODE_OUTPUT,// 设置是输入还是输出
+                GPIO_PULLUP_DISABLE,//开关上拉
                 GPIO_PULLDOWN_DISABLE,//开关下拉
-                GPIO_INTR_DISABLE     // 开关中断
+                GPIO_INTR_DISABLE// 开关中断
             };
             gpio_config(&io_conf);
         }
@@ -64,11 +52,11 @@ namespace esp {
     inline void gpio_out_OD(gpio_num_t IO, bool value) {
         if (gpio_state[IO].mode != GPIO_MODE_OUTPUT_OD) {
             gpio_config_t io_conf = {
-                1ull << IO,           // 设置要操作的接口,掩码结构
-                GPIO_MODE_OUTPUT_OD,  // 设置是输入还是输出
-                GPIO_PULLUP_DISABLE,  //开关上拉
+                1ull << IO,// 设置要操作的接口,掩码结构
+                GPIO_MODE_OUTPUT_OD,// 设置是输入还是输出
+                GPIO_PULLUP_DISABLE,//开关上拉
                 GPIO_PULLDOWN_DISABLE,//开关下拉
-                GPIO_INTR_DISABLE     // 开关中断
+                GPIO_INTR_DISABLE// 开关中断
             };
             gpio_config(&io_conf);
         }
@@ -76,7 +64,7 @@ namespace esp {
         gpio_set_level(IO, value);
     }//gpio_out_OD
 
-    //输入这块建议该用Arduion的,还带消抖
+
 
     using gpin_t = std::tuple<gpio_num_t, std::chrono::steady_clock::time_point>;//可能叫button更好
 
@@ -117,8 +105,4 @@ namespace esp {
         gpio_install_isr_service(0);
     });
 
-
-
-
-
-}// esp
+}//mesp
