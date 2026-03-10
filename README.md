@@ -1,7 +1,7 @@
 # Top-AMS
-![C++20](https://img.shields.io/badge/C%2B%2B-20-blue?logo=c%2B%2B&logoColor=white)
+![C++23](https://img.shields.io/badge/C%2B%2B-23-blue?logo=c%2B%2B&logoColor=white)
 ![VSCode](https://img.shields.io/badge/IDE-VSCode-007ACC?logo=visual-studio-code&logoColor=white)
-![ESP-IDF](https://img.shields.io/badge/Framework-ESP--IDF-green?logo=espressif&logoColor=white)
+![ESP-IDF v5.5.2](https://img.shields.io/badge/ESP--IDF-v5.5.2-green?logo=espressif&logoColor=white)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/nccrrv/Top-AMS)
 ![GitHub License](https://img.shields.io/github/license/nccrrv/Top-AMS)
 ## 简介
@@ -13,7 +13,7 @@
 ### 主控模块
 - [合宙esp32C3](https://wiki.luatos.com/chips/esp32c3/board.html)
 - [PCB版](https://oshwhub.com/eda_xnlouvih/top-ams-8-tong-dao)(如果你只需要双色,也可以考虑直接在面包板上接线)
-<!-- - 电机芯片<br>之后放上PCB版的嘉立创链接以及电机芯片的具体型号  -->
+
 -
   | 通道  | 前向GPIO | 后向GPIO |    备注     |
   | :---: | :------- | :------- | :---------: |
@@ -39,7 +39,7 @@
   - 成对N20电机设计,有适配A1龙门的支架
 
 ### 刷入固件
-- [固件刷入教程](https://docs.espressif.com/projects/esp-test-tools/zh_CN/latest/esp32/production_stage/tools/flash_download_tool.html)
+- [固件刷入教程](https://docs.espressif.com/projects/esp-techpedia/zh_CN/latest/esp-friends/get-started/try-firmware/try-firmware-platform.html#esp-launchpad)
 - 固件刷完要重启
 ### esp配网
 - 使用微信小程序 **一键配网**
@@ -66,20 +66,17 @@
 - A1 mini 固件版本1.04.00
 - A1      固件版本1.04.00
 - P1S
-- 1.05固件加了鉴权,现不支持(?可能开启局域网模式加开发者模式后可以,待测试)
+- 1.05固件加了鉴权,需要开启局域网模式
 ### 讨论
 - Q群:8820913⑨九,注明来意
 ### 配套设施
 - [迷你三通](https://makerworld.com.cn/zh/models/1289990-3tong-mini-wu-xu-qi-dong-jie-tou-chao-si-hua#profileId-1383310)
 - MW上也有其他没有及时更新到本页面的优秀配套设施,请多加搜索
 ### 代办
-- web心跳机制
 - 使用小绿点的自适应进料时间
 - 自动续料
     - 思路:默认会续当前通道的下一个通道的料,在切片时候就要注意好.软件架构上,维护一个长度为使用的通道数(通过是否是NC脚判断)的布尔向量,记忆当前通道是否被续料过,这个记忆状态会在本次打印任务结束后重置
 - 异常处理
-  - mqtt断开
-    - mqtt状态的更新和灯语
   - 因为料线刚好没了,无法退线的的报错
 - 更小白的固件刷入教程
-  
+- 16通支持
