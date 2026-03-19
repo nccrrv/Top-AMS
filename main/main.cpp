@@ -45,7 +45,7 @@ inline mstd::call_once restart_command(
 inline void state_event(const Exstring<128>& msg) {}
 
 using async_work_type = std::function<void()>;
-inline mesp::channel<async_work_type, 10> async_channel;
+inline mesp::channel_lock<async_work_type> async_channel;
 
 namespace topams {
 
@@ -98,7 +98,7 @@ namespace topams {
 
 
     inline volatile int32_t hw_switch = 0;//@_@应该是atomic
-    inline mesp::ws_nvs_value<int32_t> extruder("extruder", 0);// 1-16, 0表示无耗材
+    inline mesp::ws_nvs_value<int32_t> extruder("extruder", 1);// 1-16, 0表示无耗材
     inline std::atomic<bool> pause_lock{false};// 暂停锁
     std::atomic<int32_t> ams_status = -1;
     std::atomic<int32_t> nozzle_target_temper = -1;
@@ -108,11 +108,10 @@ namespace topams {
     //@brief 换料
     void change_filament(const Mqttclient& client, int32_t old_extruder, int32_t new_extruder) {
         webfpr("开始换料");
-        // esp::gpio_out(config::LED_R, false);
-        if (topams::motors[new_extruder - 1].load_time.get_value() > 0) {//使用固定时间进料@_@
+
+        if (topams::motors[new_extruder - 1].load_time.get_value() > 0) {//使用固定时间进料
             webfpr("使用固定时间进料");
             // ws_extruder = std::to_string(old_extruder) + string(" → ") + std::to_string(new_extruder);
-
             // publish(client, bambu::msg::uload);
             client.publish(bambu::msg::runGcode(
                 "M109 S" + Exstring(topams::motors[old_extruder - 1].temper.get_value()) + "\nM620 S255\nT255\nM621 S255\n"));//新的快速退料!_!
@@ -176,7 +175,7 @@ namespace topams {
 
         webfpr("开始进料");
 
-        {//新写的N20上料
+        {
             mqttclient.publish(bambu::msg::get_status);//查询小绿点
             mstd::delay(3s);//等待查询结果
             if (hw_switch == 1) {//有料需要退料
@@ -288,7 +287,9 @@ namespace topams {
 
                     int32_t old_extruder = extruder.get_value();
                     int32_t new_extruder = bed_target_temper;
-                    if (old_extruder != new_extruder) {//旧通道不等于新通道
+                    if (old_extruder == 0) {
+                        webfpr("当前通道未知,本次请手动进退料,之后设置好新料为当前通道");
+                    } else if (old_extruder != new_extruder) {//旧通道不等于新通道
                         mstd::fpr("唤醒换料程序");
                         pause_lock = true;
                         async_channel.emplace([&client, old_extruder, new_extruder]() {
@@ -386,6 +387,14 @@ extern "C" void app_main(void) {
 
     fpr("main函数开始");
     fpr("wsValue数量:", wsValue_state.map.size());
+
+
+    for (size_t i = 0; i < 8; i++) {
+        auto& x = topams::motors[i];
+        mesp::gpio_out(x.forward, false);
+        mesp::gpio_out(x.backward, false);
+    }//初始化电机GPIO
+
 
 
     //异步任务处理,mini线程池

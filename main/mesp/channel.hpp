@@ -16,12 +16,39 @@
 #include "../mstd/other.hpp"
 #include "freertos/queue.h"
 #include "freertos/task.h"
+#include <deque>
 
+namespace mstd {
+    //临时放一下
+
+    struct lock_key {
+      private:
+        std::binary_semaphore sp{1};
+
+      public:
+        void lock() noexcept { sp.acquire(); }
+        void unlock() noexcept { sp.release(); }
+    };// lock_key
+
+    // 类似unique_lock的基础RAII锁
+    struct RAII_lock {
+        using key_type = lock_key;// 如果哪天要扩展key类型的话
+      private:
+        key_type& key;// 互斥体
+      public:
+        void lock() noexcept { key.lock(); }
+        void unlock() noexcept { key.unlock(); }
+
+        explicit RAII_lock(key_type& k) noexcept : key(k) { lock(); }
+        ~RAII_lock() noexcept { unlock(); }
+    };// RAII_lock
+
+}//mstd
 
 namespace mesp {
 
     template <typename T, size_t N>
-    //当前要求T是POD,且不应该过大,否则指针效率更高
+        requires std::is_trivially_copyable_v<T>
     struct channel {
         using value_type = T;
         static constexpr size_t max_size = N;
@@ -78,6 +105,40 @@ namespace mesp {
         //带关闭的再说,需要sizeflag
 
     };//channel
+
+
+
+    template <typename T>
+    struct channel_lock {
+        //@_@有空再优化
+        using value_type = T;
+
+      private:
+        std::deque<value_type> data;
+        std::counting_semaphore<> Size{0};
+        mstd::lock_key key;
+
+      public:
+        template <typename... V>
+        void emplace(V&&... v) {
+            {
+                mstd::RAII_lock lock(key);
+                data.emplace_back(std::forward<V>(v)...);
+            }
+            Size.release(1);
+        }// emplace
+
+        T pop() {
+            Size.acquire();
+            {
+                mstd::RAII_lock lock(key);
+                T temp = std::move(data.front());
+                data.pop_front();
+                return temp;//@_@其实return可以放在外面
+            }
+        }// pop;
+
+    };//channel_lock
 
 
 }//mesp

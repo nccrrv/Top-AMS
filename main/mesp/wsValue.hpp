@@ -92,7 +92,9 @@ namespace mesp {
         const size_t json_size = measureJson(doc);
         constexpr size_t max_json_size = 4096;//目前是3682
         if (json_size < max_json_size) {
-            Exstring<max_json_size> msg;
+            static mstd::lock_key key;//不池化会爆栈,thread_local用不了
+            mstd::RAII_lock l(key);
+            static Exstring<max_json_size> msg;
             serializeJson(doc, msg.data(), msg.max_size());
             ws.textAll(msg.c_str());
         } else {
@@ -262,7 +264,7 @@ namespace mesp {
         using type = T;
     };
 
-    inline channel<std::function<void()>, 10> ws_command_channel;
+    inline channel_lock<std::function<void()>> ws_command_channel;
 
     inline void ws_command_init() {
         static std::thread ws_command_thread{[]() {
